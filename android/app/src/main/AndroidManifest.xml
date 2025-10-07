@@ -2,7 +2,7 @@
     <!-- Required for posting notifications on Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
-        android:label="charge_alert"
+        android:label="ChargeAlert"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

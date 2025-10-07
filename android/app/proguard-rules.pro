@@ -1,0 +1,6 @@
+-keep class * extends androidx.fragment.app.Fragment{}
+-keep class androidx.lifecycle.DefaultLifecycleObserver
+-keep class * extends com.dexterous.flutterlocalnotifications.** { *; }
+-dontwarn com.dexterous.flutterlocalnotifications.**
+-keep class com.baseflow.permissionhandler.** { *; }
+-dontwarn com.baseflow.permissionhandler.**
