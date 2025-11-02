@@ -31,9 +31,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
   flutter_riverpod: ^2.4.8
   battery_plus: ^7.0.0
   flutter_local_notifications: ^19.4.2
@@ -44,8 +41,7 @@ dependencies:
   fl_chart: ^0.69.0
 
   audioplayers: ^6.5.1
-  # wakelock removed (use foreground service to keep device awake)
-  flutter_foreground_task: ^9.1.0
+  # Keep dependencies lean for smaller APK/AAB size
 
 dev_dependencies:
   flutter_test:
