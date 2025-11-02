@@ -228,7 +228,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
             widthFactor: level / 100,
             child: Container(
               decoration: BoxDecoration(
-                color: color.withValues(alpha:3),
+                color: color.withValues(alpha: 0.03),
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
