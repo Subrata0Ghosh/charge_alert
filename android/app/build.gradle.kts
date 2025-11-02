@@ -29,6 +29,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Package only English resources to reduce size. Add more if you localize.
+        resourceConfigurations += setOf("en")
     }
 
     buildTypes {
@@ -42,12 +44,14 @@ android {
         }
     }
 
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86_64")
-            isUniversalApk = true
+    // ABI split configuration removed to avoid conflict with ndk.abiFilters
+    // Prefer building an App Bundle (flutter build appbundle) or use
+    // --split-per-abi at build time.
+
+    packaging {
+        resources {
+            // Exclude common license/notice files not needed at runtime
+            excludes += "/META-INF/{AL2.0,LGPL2.1,DEPENDENCIES,LICENSE,LICENSE.txt,LICENSE.md,NOTICE,NOTICE.txt}"
         }
     }
 }

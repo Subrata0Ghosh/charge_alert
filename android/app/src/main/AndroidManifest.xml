@@ -5,17 +5,12 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- For loading QR image and opening external links -->
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- INTERNET not required for current features (external browser handles network) -->
 
     <application
         android:label="ChargeAlert"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        <!-- Foreground service used for continuous alarm playback -->
-        <service
-            android:name="com.pravera.flutter_foreground_task.FlutterForegroundService"
-            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
