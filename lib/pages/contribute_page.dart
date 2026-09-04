@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 class ContributePage extends StatelessWidget {
   const ContributePage({super.key});
 
-  // TODO: Set your UPI ID and payee name here
   static const String upiId = 'tosg@ptyes';
   static const String payeeName = 'TechnOrchid';
 

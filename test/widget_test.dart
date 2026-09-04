@@ -12,11 +12,15 @@ import 'package:charge_alert/main.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-  // Build our app and trigger a frame.
-  await tester.pumpWidget(ProviderScope(child: ChargeAlertApp()));
+  testWidgets('App launches and displays ChargeAlert', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const ProviderScope(child: ChargeAlertApp()));
 
-  // Verify that the title is present.
-  expect(find.text('ChargeAlert'), findsOneWidget);
+    // Verify that the title is present on SplashPage.
+    expect(find.text('ChargeAlert'), findsOneWidget);
+
+    // Drain splash timer and transition
+    await tester.pump(const Duration(milliseconds: 1300));
+    await tester.pumpAndSettle();
   });
 }

@@ -1,34 +1,97 @@
-package com.example.charge_alert
+package com.technorchid.charge_alert
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.SharedPreferences
+import android.net.Uri
+import android.os.BatteryManager
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import android.content.Context
-import android.content.SharedPreferences
-import android.net.Uri
-import android.os.Build
-import android.os.PowerManager
-import android.provider.Settings
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.example.charge_alert/alarm"
+    private val CHANNEL = "com.technorchid.charge_alert/alarm"
+    private var methodChannel: MethodChannel? = null
+    private var alarmBroadcastReceiver: BroadcastReceiver? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 "startService" -> {
-                    val intent = Intent(this, AlarmService::class.java)
-                    ContextCompat.startForegroundService(this, intent)
-                    result.success(true)
+                    try {
+                        val intent = Intent(this, AlarmService::class.java)
+                        ContextCompat.startForegroundService(this, intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("START_SERVICE_ERROR", e.message, null)
+                    }
                 }
                 "stopService" -> {
-                    val intent = Intent(this, AlarmService::class.java)
-                    stopService(intent)
-                    result.success(true)
+                    try {
+                        val intent = Intent(this, AlarmService::class.java).apply { action = "STOP_ALARM" }
+                        startService(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        try {
+                            stopService(Intent(this, AlarmService::class.java))
+                            result.success(true)
+                        } catch (e2: Exception) {
+                            result.error("STOP_SERVICE_ERROR", e2.message, null)
+                        }
+                    }
+                }
+                "isAlarmRunning" -> {
+                    result.success(AlarmService.isRunning)
+                }
+                "getBatteryDetails" -> {
+                    try {
+                        val ifilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+                        val bIntent = registerReceiver(null, ifilter)
+                        if (bIntent != null) {
+                            val rawTemp = bIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0)
+                            val tempCelsius = rawTemp / 10.0
+                            val rawVoltage = bIntent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0)
+                            val voltageVolts = rawVoltage / 1000.0
+                            val healthCode = bIntent.getIntExtra(BatteryManager.EXTRA_HEALTH, BatteryManager.BATTERY_HEALTH_UNKNOWN)
+                            val healthStr = when (healthCode) {
+                                BatteryManager.BATTERY_HEALTH_GOOD -> "Good"
+                                BatteryManager.BATTERY_HEALTH_OVERHEAT -> "Overheat"
+                                BatteryManager.BATTERY_HEALTH_DEAD -> "Dead"
+                                BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE -> "Over Voltage"
+                                BatteryManager.BATTERY_HEALTH_COLD -> "Cold"
+                                else -> "Good"
+                            }
+                            val pluggedCode = bIntent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
+                            val pluggedStr = when (pluggedCode) {
+                                BatteryManager.BATTERY_PLUGGED_AC -> "AC Charger"
+                                BatteryManager.BATTERY_PLUGGED_USB -> "USB Port"
+                                BatteryManager.BATTERY_PLUGGED_WIRELESS -> "Wireless"
+                                else -> "Unplugged"
+                            }
+                            val tech = bIntent.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY) ?: "Li-ion"
+
+                            result.success(mapOf(
+                                "temperature" to tempCelsius,
+                                "voltage" to voltageVolts,
+                                "health" to healthStr,
+                                "plugged" to pluggedStr,
+                                "technology" to tech
+                            ))
+                        } else {
+                            result.success(emptyMap<String, Any>())
+                        }
+                    } catch (e: Exception) {
+                        result.error("BATTERY_INFO_ERROR", e.message, null)
+                    }
                 }
                 "openSettings" -> {
                     val args = call.arguments as? Map<*, *>
@@ -96,7 +159,6 @@ class MainActivity : FlutterActivity() {
                                         tryStart("com.huawei.systemmanager")
                                     }
                                     manu.contains("samsung") -> {
-                                        // Often battery page is the best entry on Samsung
                                         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                                         intent.data = Uri.parse("package:$packageName")
                                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -147,5 +209,41 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        // Register broadcast receiver for alarm state changes
+        registerAlarmReceiver()
+    }
+
+    private fun registerAlarmReceiver() {
+        alarmBroadcastReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    "com.technorchid.charge_alert.ALARM_STARTED" -> {
+                        methodChannel?.invokeMethod("onAlarmStatusChanged", mapOf("isAlarming" to true))
+                    }
+                    "com.technorchid.charge_alert.ALARM_STOPPED" -> {
+                        methodChannel?.invokeMethod("onAlarmStatusChanged", mapOf("isAlarming" to false))
+                    }
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction("com.technorchid.charge_alert.ALARM_STARTED")
+            addAction("com.technorchid.charge_alert.ALARM_STOPPED")
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(alarmBroadcastReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(alarmBroadcastReceiver, filter)
+        }
+    }
+
+    override fun onDestroy() {
+        try {
+            if (alarmBroadcastReceiver != null) {
+                unregisterReceiver(alarmBroadcastReceiver)
+            }
+        } catch (_: Exception) {}
+        super.onDestroy()
     }
 }

@@ -1,4 +1,4 @@
-package com.example.charge_alert
+package com.technorchid.charge_alert
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -10,9 +10,13 @@ class PowerReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             Intent.ACTION_POWER_CONNECTED -> {
-                // Always start the monitor service when power connects
-                val monitorIntent = Intent(context, MonitorService::class.java)
-                ContextCompat.startForegroundService(context, monitorIntent)
+                try {
+                    // Start the monitor service when power connects
+                    val monitorIntent = Intent(context, MonitorService::class.java)
+                    ContextCompat.startForegroundService(context, monitorIntent)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
 
                 // Also immediately check current level and start alarm if already at/above target
                 val prefs = context.getSharedPreferences("ChargeAlertPrefs", Context.MODE_PRIVATE)
@@ -23,8 +27,12 @@ class PowerReceiver : BroadcastReceiver() {
                 val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
 
                 if (enabled && level >= target) {
-                    val serviceIntent = Intent(context, AlarmService::class.java)
-                    ContextCompat.startForegroundService(context, serviceIntent)
+                    try {
+                        val serviceIntent = Intent(context, AlarmService::class.java)
+                        ContextCompat.startForegroundService(context, serviceIntent)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
             }
             Intent.ACTION_POWER_DISCONNECTED -> {
@@ -36,14 +44,17 @@ class PowerReceiver : BroadcastReceiver() {
                 val prefs = context.getSharedPreferences("ChargeAlertPrefs", Context.MODE_PRIVATE)
                 val lowEnabled = prefs.getBoolean("lowAlarmEnabled", false)
                 if (!lowEnabled) {
-                    context.stopService(Intent(context, MonitorService::class.java))
+                    try {
+                        context.stopService(Intent(context, MonitorService::class.java))
+                    } catch (_: Exception) {}
                 } else {
                     // Ensure monitor keeps running for low-battery tracking
-                    val monitorIntent = Intent(context, MonitorService::class.java)
-                    ContextCompat.startForegroundService(context, monitorIntent)
+                    try {
+                        val monitorIntent = Intent(context, MonitorService::class.java)
+                        ContextCompat.startForegroundService(context, monitorIntent)
+                    } catch (_: Exception) {}
                 }
             }
         }
     }
 }
-

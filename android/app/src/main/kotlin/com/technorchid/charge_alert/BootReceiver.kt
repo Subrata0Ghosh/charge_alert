@@ -1,4 +1,4 @@
-package com.example.charge_alert
+package com.technorchid.charge_alert
 
 import android.content.BroadcastReceiver
 import android.content.Context
