@@ -774,6 +774,41 @@ class _VoltPainter extends CustomPainter {
       ).createShader(Rect.fromCenter(center: Offset(bc.dx, bc.dy - bh * 0.32), width: bw * 0.85, height: bh * 0.45));
     canvas.drawRRect(bodyRRect, chinShadowPaint);
 
+    // During charging, display the high-tech battery indicator on Volt's body/chest
+    if (mood == VoltMood.charging) {
+      final chestCenter = Offset(bc.dx, bc.dy + bh * 0.10);
+      final badgeW = bw * 0.70;
+      final badgeH = bh * 0.50;
+
+      final badgeRRect = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: chestCenter, width: badgeW, height: badgeH),
+        const Radius.circular(6),
+      );
+
+      // Cybernetic dark badge on torso
+      canvas.drawRRect(
+        badgeRRect,
+        Paint()..color = const Color(0xFF0F172A),
+      );
+
+      // Glowing emerald neon border
+      canvas.drawRRect(
+        badgeRRect,
+        Paint()
+          ..color = const Color(0xFF10B981).withValues(alpha: 0.7)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2,
+      );
+
+      // Charging battery glyph on chest
+      _drawBatteryGlyph(
+        canvas,
+        center: Offset(chestCenter.dx - 1.0, chestCenter.dy),
+        isLow: false,
+        color: const Color(0xFF10B981),
+      );
+    }
+
     // ─── 4. Left Arm (Viewer's Right Side) ──────────────────────────────────
     canvas.save();
     canvas.translate(w * 0.69, h * 0.72);
@@ -1002,11 +1037,6 @@ class _VoltPainter extends CustomPainter {
       _drawShieldGlyph(canvas, center: Offset(fx, fy - vh * 0.30), color: eyeColor);
     } else {
       // Normal / Charging / Overheating: Expressive Eyes with Lifelike Blinking
-      if (mood == VoltMood.charging) {
-        // Charging Battery Spark Glyph on Forehead [ ⚡ ]
-        _drawBatteryGlyph(canvas, center: Offset(fx, fy - vh * 0.32), isLow: false, color: eyeColor);
-      }
-
       if (blinkProgress > 0.65) {
         // Natural Closed Eyelid Line
         final slitPaint = Paint()

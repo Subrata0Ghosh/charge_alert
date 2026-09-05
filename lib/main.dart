@@ -378,14 +378,60 @@ class ChargeAlertApp extends ConsumerWidget {
         ),
       ),
       initialRoute: '/',
-      routes: {
-        '/': (_) => const SplashPage(),
-        '/onboarding': (_) => const OnboardingPage(),
-        '/home': (_) => const ChargeAlertScreen(),
-        '/history': (_) => const ChargeHistoryPage(),
-        '/about': (_) => const AboutPage(),
-        '/contribute': (_) => const ContributePage(),
-        '/privacy': (_) => const PrivacyPolicyPage(),
+      onGenerateRoute: (settings) {
+        Widget page;
+        switch (settings.name) {
+          case '/':
+            page = const SplashPage();
+            break;
+          case '/onboarding':
+            page = const OnboardingPage();
+            break;
+          case '/home':
+            page = const ChargeAlertScreen();
+            break;
+          case '/history':
+            page = const ChargeHistoryPage();
+            break;
+          case '/about':
+            page = const AboutPage();
+            break;
+          case '/contribute':
+            page = const ContributePage();
+            break;
+          case '/privacy':
+            page = const PrivacyPolicyPage();
+            break;
+          default:
+            page = const ChargeAlertScreen();
+        }
+
+        // Fluid, premium shared-axis cross-fade with gentle scale
+        // Completely eliminates dark dips, blank pauses, and jarring cuts
+        if (settings.name == '/' || settings.name == '/home' || settings.name == '/onboarding') {
+          return PageRouteBuilder(
+            settings: settings,
+            pageBuilder: (context, animation, secondaryAnimation) => page,
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              final curved = CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+                reverseCurve: Curves.easeInCubic,
+              );
+              return FadeTransition(
+                opacity: curved,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.96, end: 1.0).animate(curved),
+                  child: child,
+                ),
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 380),
+            reverseTransitionDuration: const Duration(milliseconds: 350),
+          );
+        }
+
+        return MaterialPageRoute(builder: (_) => page, settings: settings);
       },
     );
   }
@@ -417,7 +463,8 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
       showDragHandle: true,
       builder: (ctx) {
         return SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(16.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -501,7 +548,14 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
           if (!isAlarming) {
             _alarmTimer?.cancel();
             _alarmTimer = null;
+            try {
+              flutterLocalNotificationsPlugin.cancel(0);
+            } catch (_) {}
           }
+        }
+      } else if (call.method == 'onTheftAlarmTriggered') {
+        if (mounted) {
+          _triggerTheftAlarm();
         }
       }
     });
@@ -512,6 +566,12 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
       final running = await _platform.invokeMethod<bool>('isAlarmRunning');
       if (running == true && mounted) {
         setState(() => _isAlarming = true);
+        if (ref.read(guardianArmedProvider)) {
+          final bState = ref.read(batteryStateProvider);
+          if (bState != BatteryState.charging && bState != BatteryState.full) {
+            _triggerTheftAlarm();
+          }
+        }
       }
     } catch (_) {}
   }
@@ -533,10 +593,10 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
     } catch (_) {}
   }
 
-  Future<void> _startForegroundAlarm() async {
+  Future<void> _startForegroundAlarm({bool isTheft = false}) async {
     setState(() => _isAlarming = true);
     try {
-      await _platform.invokeMethod('startService');
+      await _platform.invokeMethod('startService', {'isTheft': isTheft});
     } catch (_) {}
   }
 
@@ -656,6 +716,9 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
     });
     _alarmTimer?.cancel();
     _alarmTimer = null;
+    try {
+      flutterLocalNotificationsPlugin.cancel(0);
+    } catch (_) {}
     _stopForegroundAlarm();
   }
 
@@ -683,9 +746,9 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
     _startInAppAlarm();
   }
 
-  Future<void> _startInAppAlarm() async {
+  Future<void> _startInAppAlarm({bool isTheft = false}) async {
     if (_isAlarming) {
-      try { await _startForegroundAlarm(); } catch (_) {}
+      try { await _startForegroundAlarm(isTheft: isTheft); } catch (_) {}
     }
   }
 
@@ -694,7 +757,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
     _isTheftLockoutShowing = true;
     _isAlarming = true;
     try {
-      await _startForegroundAlarm();
+      await _startForegroundAlarm(isTheft: true);
     } catch (_) {}
 
     if (!mounted) {
@@ -785,31 +848,33 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
               Text('Change Security PIN', style: TextStyle(color: Colors.white, fontSize: 18)),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Enter a new 4-digit PIN for Guardian Mode.',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: pinController,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                obscureText: true,
-                style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 12),
-                textAlign: TextAlign.center,
-                decoration: InputDecoration(
-                  hintText: '••••',
-                  counterText: '',
-                  filled: true,
-                  fillColor: const Color(0xFF0F172A),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  errorText: error,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Enter a new 4-digit PIN for Guardian Mode.',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                TextField(
+                  controller: pinController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 4,
+                  obscureText: true,
+                  style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 12),
+                  textAlign: TextAlign.center,
+                  decoration: InputDecoration(
+                    hintText: '••••',
+                    counterText: '',
+                    filled: true,
+                    fillColor: const Color(0xFF0F172A),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    errorText: error,
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -953,6 +1018,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text("ChargeAlert"),
         centerTitle: true,
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -1046,6 +1112,9 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                 case 'onboarding':
                   Navigator.of(context).pushNamed('/onboarding');
                   break;
+                case 'splash':
+                  Navigator.of(context).pushNamed('/');
+                  break;
                 case 'about':
                   Navigator.of(context).pushNamed('/about');
                   break;
@@ -1065,6 +1134,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
             },
             itemBuilder: (context) => const [
               PopupMenuItem(value: 'theme', child: Text('Theme: Light / Dark / Auto')),
+              PopupMenuItem(value: 'splash', child: Text('Replay Splash Screen')),
               PopupMenuItem(value: 'onboarding', child: Text('Intro & Walkthrough')),
               PopupMenuItem(value: 'history', child: Text('Charge History')),
               PopupMenuItem(value: 'about', child: Text('About')),
@@ -1088,51 +1158,66 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                   const SizedBox(height: 12),
                   // Active Alarm Alert Banner
                   if (_isAlarming)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade700,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.red.withValues(alpha: 0.4),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final isArmed = ref.watch(guardianArmedProvider);
+                        final bState = ref.watch(batteryStateProvider);
+                        final isTheftAlert = isArmed && bState != BatteryState.charging && bState != BatteryState.full;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isTheftAlert ? const Color(0xFF7F1D1D) : Colors.red.shade700,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (isTheftAlert ? Colors.red.shade900 : Colors.red).withValues(alpha: 0.4),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.alarm_on, color: Colors.white, size: 32),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Text(
-                                  'Alarm Ringing!',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isTheftAlert ? Icons.warning_amber_rounded : Icons.alarm_on,
+                                color: Colors.white,
+                                size: 32,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isTheftAlert ? 'THEFT ALARM ACTIVE!' : 'Alarm Ringing!',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      isTheftAlert ? 'Charger disconnected! PIN required.' : 'Target reached or alert active',
+                                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                    ),
+                                  ],
                                 ),
-                                SizedBox(height: 2),
-                                Text(
-                                  'Target reached or test in progress',
-                                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: isTheftAlert ? const Color(0xFF991B1B) : Colors.red.shade900,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 ),
-                              ],
-                            ),
+                                onPressed: isTheftAlert ? _triggerTheftAlarm : _stopAlarm,
+                                child: Text(
+                                  isTheftAlert ? 'DISARM' : 'STOP',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
                           ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.red.shade900,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            ),
-                            onPressed: _stopAlarm,
-                            child: const Text('STOP', style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
 
                   const SizedBox(height: 12),

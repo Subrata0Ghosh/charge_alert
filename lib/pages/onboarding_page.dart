@@ -143,7 +143,6 @@ class _OnboardingPageState extends State<OnboardingPage>
       }
       if (p.x < 0 || p.x > 1) p.drift = -p.drift;
     }
-    if (mounted) setState(() {});
   }
 
   void _goToPage(int page) {
@@ -180,10 +179,16 @@ class _OnboardingPageState extends State<OnboardingPage>
 
   Future<void> _finish() async {
     HapticFeedback.heavyImpact();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_done', true);
+    // Non-blocking disk write so transition begins immediately without a blank frame
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setBool('onboarding_done', true);
+    });
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed('/home');
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacementNamed('/home');
+    }
   }
 
   @override
@@ -204,9 +209,14 @@ class _OnboardingPageState extends State<OnboardingPage>
       body: Stack(
         children: [
           // Floating background particles
-          CustomPaint(
-            painter: _BgParticlePainter(particles: _bgParticles, particleColor: t.particleColor),
-            size: Size.infinite,
+          AnimatedBuilder(
+            animation: _bgParticleController,
+            builder: (context, _) {
+              return CustomPaint(
+                painter: _BgParticlePainter(particles: _bgParticles, particleColor: t.particleColor),
+                size: Size.infinite,
+              );
+            },
           ),
 
           // Page view

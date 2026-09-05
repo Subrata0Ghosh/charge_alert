@@ -114,8 +114,17 @@ class MonitorService : Service() {
                         val guardianArmed = prefs.getBoolean("guardianArmed", false)
                         if (guardianArmed) {
                             try {
-                                val startAlarm = Intent(context, AlarmService::class.java)
+                                val startAlarm = Intent(context, AlarmService::class.java).apply {
+                                    putExtra("isTheftAlarm", true)
+                                }
                                 ContextCompat.startForegroundService(context, startAlarm)
+                            } catch (_: Exception) {}
+                            try {
+                                val mainIntent = Intent(context, MainActivity::class.java).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                    putExtra("isTheftAlarm", true)
+                                }
+                                context.startActivity(mainIntent)
                             } catch (_: Exception) {}
                         } else if (!lowEnabled) {
                             try {

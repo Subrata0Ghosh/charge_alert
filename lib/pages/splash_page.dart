@@ -12,150 +12,98 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
-  // Master timeline controller (0→1 over ~3.8 seconds)
+  // Master timeline controller: calibrated to 2800ms for cinematic pacing
   late AnimationController _masterController;
 
-  // Sub-animations derived from master
-  late Animation<double> _particleConverge; // 0.0–0.28
-  late Animation<double> _ringExpand;       // 0.20–0.50
-  late Animation<double> _boltScale;        // 0.30–0.55
-  late Animation<double> _textReveal;       // 0.45–0.70
-  late Animation<double> _eyeAppear;        // 0.60–0.75
-  late Animation<double> _scanLine;         // 0.70–0.88
-  late Animation<double> _flashOut;         // 0.88–1.00
+  // Derived sub-animations
+  late Animation<double> _bgFade;
+  late Animation<double> _reactorScale;
+  late Animation<double> _chargeProgress;
+  late Animation<double> _voltWake;
+  late Animation<double> _brandReveal;
 
-  // Particle system
-  late AnimationController _particleLoop;
-  final List<_BootParticle> _particles = [];
+  // Looping background ambience (drift & pulse)
+  late AnimationController _ambientController;
+
+  // Particle data
+  final List<_CyberParticle> _particles = [];
   final math.Random _rng = math.Random();
 
-  // Glow pulse
-  late AnimationController _glowPulse;
-  late Animation<double> _glowAnimation;
-
-  // Eye blink
-  bool _eyesBlinked = false;
-
-  // Typewriter
-  final String _titleText = 'CHARGE ALERT';
-  int _revealedChars = 0;
-  Timer? _typeTimer;
-
-  // Initializing dots
-  int _dotCount = 0;
-  Timer? _dotTimer;
-
+  // Navigation and state guards
   bool _navigated = false;
-
-  bool? _isDark;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    if (_isDark == null) {
-      _isDark = dark;
-      _generateParticles(dark);
-    } else {
-      _isDark = dark;
-    }
-  }
-
-  void _generateParticles(bool isDark) {
-    _particles.clear();
-    for (int i = 0; i < 60; i++) {
-      final angle = _rng.nextDouble() * 2 * math.pi;
-      final dist = 0.6 + _rng.nextDouble() * 0.4;
-      _particles.add(_BootParticle(
-        startAngle: angle,
-        startDist: dist,
-        size: 1.0 + _rng.nextDouble() * 2.5,
-        brightness: 0.3 + _rng.nextDouble() * 0.7,
-        speed: 0.7 + _rng.nextDouble() * 0.6,
-        color: isDark
-            ? HSLColor.fromAHSL(1.0, 185 + _rng.nextDouble() * 30, 0.8 + _rng.nextDouble() * 0.2, 0.5 + _rng.nextDouble() * 0.4).toColor()
-            : HSLColor.fromAHSL(1.0, 210 + _rng.nextDouble() * 30, 0.7 + _rng.nextDouble() * 0.3, 0.35 + _rng.nextDouble() * 0.3).toColor(),
-      ));
-    }
-  }
+  bool _onboardingDone = false;
+  bool _isPrefsLoaded = false;
+  bool _hasHapticTriggered50 = false;
+  bool _hasHapticTriggered100 = false;
 
   @override
   void initState() {
     super.initState();
 
-    // Master timeline
-    _masterController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3800),
-    );
+    // Preload shared preferences immediately to avoid transition delay
+    SharedPreferences.getInstance().then((prefs) {
+      if (mounted) {
+        _onboardingDone = prefs.getBool('onboarding_done') ?? false;
+        _isPrefsLoaded = true;
+      }
+    });
 
-    _particleConverge = CurvedAnimation(
-      parent: _masterController,
-      curve: const Interval(0.0, 0.28, curve: Curves.easeInCubic),
-    );
-    _ringExpand = CurvedAnimation(
-      parent: _masterController,
-      curve: const Interval(0.20, 0.50, curve: Curves.easeOutCubic),
-    );
-    _boltScale = CurvedAnimation(
-      parent: _masterController,
-      curve: const Interval(0.30, 0.55, curve: Curves.elasticOut),
-    );
-    _textReveal = CurvedAnimation(
-      parent: _masterController,
-      curve: const Interval(0.45, 0.70, curve: Curves.easeOut),
-    );
-    _eyeAppear = CurvedAnimation(
-      parent: _masterController,
-      curve: const Interval(0.60, 0.75, curve: Curves.easeOut),
-    );
-    _scanLine = CurvedAnimation(
-      parent: _masterController,
-      curve: const Interval(0.70, 0.88, curve: Curves.linear),
-    );
-    _flashOut = CurvedAnimation(
-      parent: _masterController,
-      curve: const Interval(0.88, 1.00, curve: Curves.easeIn),
-    );
+    _generateParticles();
 
-    // Particle floating loop (continuous subtle drift)
-    _particleLoop = AnimationController(
+    // Ambient loop for subtle energy pulsing
+    _ambientController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 50),
-    )..addListener(() {
-        if (mounted) setState(() {});
-      })
-      ..repeat();
-
-    // Glow pulse
-    _glowPulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 2400),
     )..repeat(reverse: true);
 
-    _glowAnimation = Tween<double>(begin: 0.3, end: 0.9).animate(
-      CurvedAnimation(parent: _glowPulse, curve: Curves.easeInOut),
+    // 3500ms cinematic master timeline: gives ample time to enjoy the visuals
+    _masterController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3500),
+    );
+
+    _bgFade = CurvedAnimation(
+      parent: _masterController,
+      curve: const Interval(0.0, 0.18, curve: Curves.easeOut),
+    );
+
+    _reactorScale = CurvedAnimation(
+      parent: _masterController,
+      curve: const Interval(0.05, 0.32, curve: Curves.easeOutBack),
+    );
+
+    _chargeProgress = CurvedAnimation(
+      parent: _masterController,
+      curve: const Interval(0.18, 0.65, curve: Curves.easeInOutCubic),
+    );
+
+    _voltWake = CurvedAnimation(
+      parent: _masterController,
+      curve: const Interval(0.52, 0.76, curve: Curves.easeOutBack),
+    );
+
+    _brandReveal = CurvedAnimation(
+      parent: _masterController,
+      curve: const Interval(0.30, 0.70, curve: Curves.easeOutCubic),
     );
 
     _masterController.addListener(() {
-      // Typewriter effect
-      if (_masterController.value >= 0.45) {
-        final progress = ((_masterController.value - 0.45) / 0.25).clamp(0.0, 1.0);
-        final chars = (progress * _titleText.length).floor();
-        if (chars > _revealedChars) {
-          _revealedChars = chars;
-        }
+      final progress = _masterController.value;
+
+      // Haptic at 50% charge
+      if (progress >= 0.45 && !_hasHapticTriggered50) {
+        _hasHapticTriggered50 = true;
+        HapticFeedback.selectionClick();
       }
 
-      // Eye blink at ~75%
-      if (_masterController.value >= 0.76 && !_eyesBlinked) {
-        _eyesBlinked = true;
-        // Trigger haptic
-        HapticFeedback.lightImpact();
+      // Haptic at 100% full reactor lock & Volt wake
+      if (progress >= 0.75 && !_hasHapticTriggered100) {
+        _hasHapticTriggered100 = true;
+        HapticFeedback.mediumImpact();
       }
 
-      // Navigate at end
-      if (_masterController.value >= 1.0 && !_navigated) {
+      // Auto-navigate at completion
+      if (progress >= 1.0 && !_navigated) {
         _navigated = true;
         _navigate();
       }
@@ -168,454 +116,844 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       }
     });
 
-    // Start initializing dots animation
-    _dotTimer = Timer.periodic(const Duration(milliseconds: 400), (t) {
-      if (mounted) {
-        setState(() {
-          _dotCount = (_dotCount + 1) % 4;
-        });
-      }
-    });
+    // Initial soft impact
+    HapticFeedback.lightImpact();
 
-    // Haptic on start
-    HapticFeedback.mediumImpact();
-
-    // Begin the sequence
+    // Start playback
     _masterController.forward();
   }
 
+  void _generateParticles() {
+    _particles.clear();
+    for (int i = 0; i < 45; i++) {
+      _particles.add(
+        _CyberParticle(
+          x: _rng.nextDouble(),
+          y: _rng.nextDouble(),
+          radius: 1.0 + _rng.nextDouble() * 2.2,
+          speed: 0.15 + _rng.nextDouble() * 0.35,
+          angle: _rng.nextDouble() * 2 * math.pi,
+          hue: 175 + _rng.nextDouble() * 35, // Cyan to electric emerald
+          alpha: 0.2 + _rng.nextDouble() * 0.7,
+        ),
+      );
+    }
+  }
+
   Future<void> _navigate() async {
-    final prefs = await SharedPreferences.getInstance();
-    final done = prefs.getBool('onboarding_done') ?? false;
+    if (!_isPrefsLoaded) {
+      final prefs = await SharedPreferences.getInstance();
+      _onboardingDone = prefs.getBool('onboarding_done') ?? false;
+    }
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed(done ? '/home' : '/onboarding');
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacementNamed(
+        _onboardingDone ? '/home' : '/onboarding',
+      );
+    }
   }
 
   @override
   void dispose() {
     _masterController.dispose();
-    _particleLoop.dispose();
-    _glowPulse.dispose();
-    _typeTimer?.cancel();
-    _dotTimer?.cancel();
+    _ambientController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: isDark ? Colors.black : const Color(0xFFF0F4F8),
-      body: AnimatedBuilder(
-        animation: Listenable.merge([_masterController, _glowPulse]),
-        builder: (context, _) {
-          return CustomPaint(
-            painter: _SplashBootPainter(
-              particles: _particles,
-              particleConverge: _particleConverge.value,
-              ringExpand: _ringExpand.value,
-              boltScale: _boltScale.value,
-              textReveal: _textReveal.value,
-              eyeAppear: _eyeAppear.value,
-              scanLine: _scanLine.value,
-              flashOut: _flashOut.value,
-              glowPulse: _glowAnimation.value,
-              titleText: _titleText,
-              revealedChars: _revealedChars,
-              dotCount: _dotCount,
-              masterProgress: _masterController.value,
-              eyesBlinked: _eyesBlinked,
-              isDark: isDark,
-            ),
-            size: Size.infinite,
-          );
+      backgroundColor: isDark ? const Color(0xFF020810) : const Color(0xFFF8FAFC),
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          // Instant tap-to-skip so user never feels waiting
+          if (!_navigated) {
+            _navigated = true;
+            _navigate();
+          }
         },
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_masterController, _ambientController]),
+          builder: (context, _) {
+            final masterVal = _masterController.value;
+            final chargeVal = _chargeProgress.value;
+            final voltWakeVal = _voltWake.value;
+            final brandVal = _brandReveal.value;
+            final ambientVal = _ambientController.value;
+
+            final batteryPercent = (chargeVal * 100).toInt();
+
+            String statusMessage;
+            if (masterVal < 0.25) {
+              statusMessage = 'INITIALIZING HARDWARE SENSORS...';
+            } else if (masterVal < 0.50) {
+              statusMessage = 'CALIBRATING GUARDIAN SENTINEL...';
+            } else if (masterVal < 0.70) {
+              statusMessage = 'SYNCHRONIZING VOLT COMPANION...';
+            } else {
+              statusMessage = 'ALL SYSTEMS OPTIMAL • ONLINE';
+            }
+
+            return Opacity(
+              opacity: _bgFade.value.clamp(0.0, 1.0),
+              child: Stack(
+                children: [
+                  // 1. Futuristic Holographic Background & Arc Reactor Canvas
+                  CustomPaint(
+                    painter: _CyberSplashPainter(
+                      particles: _particles,
+                      masterProgress: masterVal,
+                      reactorScale: _reactorScale.value,
+                      chargeProgress: chargeVal,
+                      ambientPulse: ambientVal,
+                      isDark: isDark,
+                    ),
+                    size: Size.infinite,
+                  ),
+
+                  // 2. Foreground Center Elements (Volt Mascot & Branding)
+                  SafeArea(
+                    child: Column(
+                      children: [
+                        const Spacer(flex: 2),
+
+                        // Center Volt Mascot in Reactor Pod
+                        Center(
+                          child: Transform.scale(
+                            scale: (0.7 + _reactorScale.value * 0.35).clamp(0.0, 1.1),
+                            child: SizedBox(
+                              width: 170,
+                              height: 170,
+                              child: CustomPaint(
+                                painter: _VoltSplashMascotPainter(
+                                  wakeProgress: voltWakeVal,
+                                  chargeProgress: chargeVal,
+                                  ambientPulse: ambientVal,
+                                  isDark: isDark,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 36),
+
+                        // Brand Title & Tagline with Reveal Animation
+                        Transform.translate(
+                          offset: Offset(0, 20 * (1.0 - brandVal)),
+                          child: Opacity(
+                            opacity: brandVal.clamp(0.0, 1.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Futuristic Pill Tag
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF00E5FF).withValues(alpha: isDark ? 0.12 : 0.08),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: const Color(0xFF00E5FF).withValues(alpha: isDark ? 0.45 : 0.3),
+                                      width: 1.2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF00E5FF).withValues(alpha: isDark ? 0.25 : 0.1),
+                                        blurRadius: 10,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.bolt, color: Color(0xFF00E5FF), size: 14),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'QUANTUM CHARGE ENGINE',
+                                        style: TextStyle(
+                                          color: isDark ? const Color(0xFFE0F7FA) : const Color(0xFF0284C7),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 2.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                const SizedBox(height: 14),
+
+                                // Main Brand Name with Gradient Shader
+                                ShaderMask(
+                                  shaderCallback: (bounds) => const LinearGradient(
+                                    colors: [
+                                      Color(0xFF00E5FF),
+                                      Color(0xFF38BDF8),
+                                      Color(0xFF10B981),
+                                    ],
+                                    stops: [0.0, 0.5, 1.0],
+                                  ).createShader(bounds),
+                                  child: const Text(
+                                    'CHARGE ALERT',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 34,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 6,
+                                      shadows: [
+                                        Shadow(
+                                          color: Color(0xFF00E5FF),
+                                          blurRadius: 18,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 8),
+
+                                // Subtitle
+                                Text(
+                                  'SMART BATTERY SENTINEL • ANTI-THEFT',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.65)
+                                        : const Color(0xFF334155).withValues(alpha: 0.8),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 3.0,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const Spacer(flex: 3),
+
+                        // Bottom Cyber Telemetry & Progress Readout
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Progress bar & Battery readout
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF0A1224).withValues(alpha: 0.8)
+                                      : Colors.white.withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFF00E5FF).withValues(alpha: isDark ? 0.25 : 0.15),
+                                    width: 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: 7,
+                                                height: 7,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: batteryPercent >= 100
+                                                      ? const Color(0xFF10B981)
+                                                      : const Color(0xFF00E5FF),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: (batteryPercent >= 100
+                                                              ? const Color(0xFF10B981)
+                                                              : const Color(0xFF00E5FF))
+                                                          .withValues(alpha: 0.6),
+                                                      blurRadius: 6,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  statusMessage,
+                                                  style: TextStyle(
+                                                    color: isDark
+                                                        ? const Color(0xFF7DD3FC)
+                                                        : const Color(0xFF0369A1),
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w700,
+                                                    letterSpacing: 1.1,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '$batteryPercent%',
+                                          style: TextStyle(
+                                            color: batteryPercent >= 100
+                                                ? const Color(0xFF10B981)
+                                                : const Color(0xFF00E5FF),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 1.0,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    // Liquid Neon Progress Track
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: SizedBox(
+                                        height: 5,
+                                        child: LinearProgressIndicator(
+                                          value: chargeVal.clamp(0.0, 1.0),
+                                          backgroundColor: isDark
+                                              ? const Color(0xFF1E293B)
+                                              : const Color(0xFFE2E8F0),
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            batteryPercent >= 100
+                                                ? const Color(0xFF10B981)
+                                                : const Color(0xFF00E5FF),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              // Instant Skip Hint
+                              Text(
+                                'Tap anywhere to skip',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white30 : Colors.black26,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 }
 
-// ─── Particle Data ───────────────────────────────────────────────────────────
+// ─── Particle Model ──────────────────────────────────────────────────────────
 
-class _BootParticle {
-  final double startAngle;
-  final double startDist;
-  final double size;
-  final double brightness;
+class _CyberParticle {
+  double x;
+  double y;
+  final double radius;
   final double speed;
-  final Color color;
+  final double angle;
+  final double hue;
+  final double alpha;
 
-  _BootParticle({
-    required this.startAngle,
-    required this.startDist,
-    required this.size,
-    required this.brightness,
+  _CyberParticle({
+    required this.x,
+    required this.y,
+    required this.radius,
     required this.speed,
-    required this.color,
+    required this.angle,
+    required this.hue,
+    required this.alpha,
   });
 }
 
-// ─── Master Painter ──────────────────────────────────────────────────────────
+// ─── Cyber Background & Holographic Arc Reactor Painter ──────────────────────
 
-class _SplashBootPainter extends CustomPainter {
-  final List<_BootParticle> particles;
-  final double particleConverge;
-  final double ringExpand;
-  final double boltScale;
-  final double textReveal;
-  final double eyeAppear;
-  final double scanLine;
-  final double flashOut;
-  final double glowPulse;
-  final String titleText;
-  final int revealedChars;
-  final int dotCount;
+class _CyberSplashPainter extends CustomPainter {
+  final List<_CyberParticle> particles;
   final double masterProgress;
-  final bool eyesBlinked;
+  final double reactorScale;
+  final double chargeProgress;
+  final double ambientPulse;
   final bool isDark;
 
-  _SplashBootPainter({
+  _CyberSplashPainter({
     required this.particles,
-    required this.particleConverge,
-    required this.ringExpand,
-    required this.boltScale,
-    required this.textReveal,
-    required this.eyeAppear,
-    required this.scanLine,
-    required this.flashOut,
-    required this.glowPulse,
-    required this.titleText,
-    required this.revealedChars,
-    required this.dotCount,
     required this.masterProgress,
-    required this.eyesBlinked,
+    required this.reactorScale,
+    required this.chargeProgress,
+    required this.ambientPulse,
     required this.isDark,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
-    final cy = size.height / 2 - 30;
-    final minDim = math.min(size.width, size.height);
+    // Reactor is centered around 36% height
+    final cy = size.height * 0.36;
 
-    // Theme-adaptive color palette
-    final bgColor = isDark ? const Color(0xFF020810) : const Color(0xFFF0F4F8);
-    final accentPrimary = isDark ? const Color(0xFF00E5FF) : const Color(0xFF1565C0);
-    final accentSecondary = isDark ? const Color(0xFF7C4DFF) : const Color(0xFF5E35B1);
-    final accentGlow = isDark ? const Color(0xFF0088FF) : const Color(0xFF42A5F5);
-    final textColor = isDark ? const Color(0xFFE0F7FA) : const Color(0xFF1A237E);
-    final subtextColor = isDark ? const Color(0xFF4FC3F7) : const Color(0xFF5C6BC0);
-    final vignetteColor = isDark ? Colors.black : const Color(0xFFE8EAF6);
-    final eyeCoreColor = isDark ? Colors.white : const Color(0xFF1A237E);
-
-    // ─── 1. Background ─────────────────────────────────────────────────
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = bgColor,
-    );
-
-    // Subtle vignette
-    final vignette = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          Colors.transparent,
-          vignetteColor.withValues(alpha: isDark ? 0.7 : 0.3),
-        ],
-        stops: const [0.5, 1.0],
-      ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: minDim * 0.7));
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), vignette);
-
-    // ─── 2. Center Glow ─────────────────────────────────────────────────
-    if (particleConverge > 0) {
-      final glowRadius = 30 + particleConverge * 80 + glowPulse * 15;
-      final glowOpacity = (particleConverge * (isDark ? 0.6 : 0.4)).clamp(0.0, 0.6);
-      final glowPaint = Paint()
-        ..shader = RadialGradient(
-          colors: [
-            accentPrimary.withValues(alpha: glowOpacity),
-            accentGlow.withValues(alpha: glowOpacity * 0.5),
-            Colors.transparent,
-          ],
-          stops: const [0.0, 0.4, 1.0],
-        ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: glowRadius));
-      canvas.drawCircle(Offset(cx, cy), glowRadius, glowPaint);
-    }
-
-    // ─── 3. Particles Converge ──────────────────────────────────────────
-    for (final p in particles) {
-      final convergeFactor = 1.0 - particleConverge * p.speed;
-      final dist = p.startDist * convergeFactor.clamp(0.02, 1.0) * minDim * 0.45;
-      final px = cx + math.cos(p.startAngle) * dist;
-      final py = cy + math.sin(p.startAngle) * dist;
-
-      final opacity = (p.brightness * (0.3 + particleConverge * 0.7)).clamp(0.0, 1.0);
-      final particlePaint = Paint()
-        ..color = p.color.withValues(alpha: opacity)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
-
-      canvas.drawCircle(Offset(px, py), p.size, particlePaint);
-
-      // Particle trail
-      if (particleConverge > 0.1 && particleConverge < 0.9) {
-        final trailDist = dist + p.size * 6;
-        final trailPx = cx + math.cos(p.startAngle) * trailDist;
-        final trailPy = cy + math.sin(p.startAngle) * trailDist;
-        final trailPaint = Paint()
-          ..color = p.color.withValues(alpha: opacity * 0.25)
-          ..strokeWidth = 0.8
-          ..style = PaintingStyle.stroke;
-        canvas.drawLine(Offset(px, py), Offset(trailPx, trailPy), trailPaint);
-      }
-    }
-
-    // ─── 4. Energy Rings ────────────────────────────────────────────────
-    if (ringExpand > 0) {
-      for (int i = 0; i < 3; i++) {
-        final delay = i * 0.15;
-        final ringProgress = ((ringExpand - delay) / (1.0 - delay)).clamp(0.0, 1.0);
-        if (ringProgress <= 0) continue;
-
-        final radius = 20 + ringProgress * minDim * 0.22 * (1.0 + i * 0.3);
-        final opacity = (1.0 - ringProgress) * 0.7;
-
-        final ringPaint = Paint()
-          ..color = Color.lerp(
-            accentPrimary,
-            accentSecondary,
-            i / 3.0,
-          )!.withValues(alpha: opacity)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0 - i * 0.4;
-
-        canvas.drawCircle(Offset(cx, cy), radius, ringPaint);
-
-        // Arc segments on rings
-        if (ringProgress > 0.2) {
-          final arcPaint = Paint()
-            ..color = accentPrimary.withValues(alpha: opacity * 0.8)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.5
-            ..strokeCap = StrokeCap.round;
-
-          final arcAngle = ringProgress * math.pi * 0.6;
-          final startAngle = masterProgress * math.pi * 4 + i * math.pi * 0.667;
-          canvas.drawArc(
-            Rect.fromCircle(center: Offset(cx, cy), radius: radius),
-            startAngle,
-            arcAngle,
-            false,
-            arcPaint,
-          );
-        }
-      }
-    }
-
-    // ─── 5. Lightning Bolt Icon ──────────────────────────────────────────
-    if (boltScale > 0) {
-      final scale = boltScale.clamp(0.0, 1.0);
-      canvas.save();
-      canvas.translate(cx, cy);
-      canvas.scale(scale);
-
-      // Outer glow
-      final boltGlow = Paint()
-        ..color = accentPrimary.withValues(alpha: 0.4 * scale)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12.0);
-      _drawBoltPath(canvas, boltGlow, 1.2);
-
-      // Main bolt
-      final boltPaint = Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [const Color(0xFF00E5FF), const Color(0xFF4FC3F7), const Color(0xFFE0F7FA)]
-              : [const Color(0xFF1565C0), const Color(0xFF42A5F5), const Color(0xFFBBDEFB)],
-        ).createShader(const Rect.fromLTWH(-20, -30, 40, 60))
-        ..style = PaintingStyle.fill;
-      _drawBoltPath(canvas, boltPaint, 1.0);
-
-      canvas.restore();
-    }
-
-    // ─── 6. Title Text (Typewriter) ─────────────────────────────────────
-    if (revealedChars > 0 && textReveal > 0) {
-      final revealed = titleText.substring(0, revealedChars.clamp(0, titleText.length));
-
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: revealed,
-          style: TextStyle(
-            color: textColor.withValues(alpha: textReveal.clamp(0.0, 1.0)),
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 6,
-            shadows: [
-              Shadow(
-                color: accentPrimary.withValues(alpha: isDark ? 0.6 : 0.3),
-                blurRadius: 12,
-              ),
+    // ─── 1. Deep Space Gradient ──────────────────────────────────────────
+    final bgShader = RadialGradient(
+      center: Alignment(0.0, (cy / size.height) * 2 - 1),
+      radius: 1.2,
+      colors: isDark
+          ? [
+              const Color(0xFF091E3A),
+              const Color(0xFF040E1E),
+              const Color(0xFF020810),
+            ]
+          : [
+              const Color(0xFFE0F2FE),
+              const Color(0xFFEEF2F6),
+              const Color(0xFFF8FAFC),
             ],
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-        textAlign: TextAlign.center,
-      )..layout();
+      stops: const [0.0, 0.55, 1.0],
+    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
-      textPainter.paint(
-        canvas,
-        Offset(cx - textPainter.width / 2, cy + 55),
-      );
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), Paint()..shader = bgShader);
 
-      // Blinking cursor
-      if (revealedChars < titleText.length && (masterProgress * 10).floor() % 2 == 0) {
-        final cursorX = cx - textPainter.width / 2 + textPainter.width + 3;
-        canvas.drawRect(
-          Rect.fromLTWH(cursorX, cy + 57, 2, 24),
-          Paint()..color = accentPrimary,
-        );
-      }
+    // ─── 2. Ambient Plasma Dust Particles ────────────────────────────────
+    for (final p in particles) {
+      final curX = (p.x * size.width + math.cos(p.angle + masterProgress * math.pi * 2) * p.speed * 40) % size.width;
+      final curY = (p.y * size.height + math.sin(p.angle + masterProgress * math.pi * 2) * p.speed * 40) % size.height;
+
+      final pColor = HSLColor.fromAHSL(
+        (p.alpha * (0.4 + ambientPulse * 0.4)).clamp(0.0, 1.0),
+        p.hue,
+        0.85,
+        isDark ? 0.6 : 0.45,
+      ).toColor();
+
+      final pPaint = Paint()
+        ..color = pColor
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
+
+      canvas.drawCircle(Offset(curX, curY), p.radius, pPaint);
     }
 
-    // ─── 7. Volt Eyes Open ──────────────────────────────────────────────
-    if (eyeAppear > 0) {
-      final eyeAlpha = eyeAppear.clamp(0.0, 1.0);
-      final eyeY = cy + 100;
-      final eyeSpacing = 14.0;
+    // ─── 3. Holographic Arc Reactor (Counter-Rotating Laser Rings) ────────
+    if (reactorScale > 0.05) {
+      final baseRadius = 105.0 * reactorScale;
 
-      // Eye blink effect — narrow when just appeared, then open
-      double eyeHeight;
-      if (eyesBlinked && eyeAppear > 0.5) {
-        // Quick blink: narrow → open
-        final blinkPhase = ((eyeAppear - 0.5) / 0.5).clamp(0.0, 1.0);
-        if (blinkPhase < 0.3) {
-          eyeHeight = 1.0; // closing
-        } else if (blinkPhase < 0.5) {
-          eyeHeight = 0.15; // closed
-        } else {
-          eyeHeight = 1.0; // reopened
-        }
-      } else {
-        eyeHeight = eyeAppear.clamp(0.0, 1.0);
-      }
-
-      for (final side in [-1.0, 1.0]) {
-        final eyeX = cx + side * eyeSpacing;
-
-        // Eye glow
-        final eyeGlowPaint = Paint()
-          ..color = accentPrimary.withValues(alpha: eyeAlpha * 0.5)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8.0);
-        canvas.drawOval(
-          Rect.fromCenter(center: Offset(eyeX, eyeY), width: 10, height: 10 * eyeHeight),
-          eyeGlowPaint,
-        );
-
-        // Eye core
-        final eyePaint = Paint()
-          ..color = eyeCoreColor.withValues(alpha: eyeAlpha);
-        canvas.drawOval(
-          Rect.fromCenter(center: Offset(eyeX, eyeY), width: 6, height: 6 * eyeHeight),
-          eyePaint,
-        );
-
-        // Pupil
-        if (eyeHeight > 0.3) {
-          canvas.drawCircle(
-            Offset(eyeX, eyeY),
-            2,
-            Paint()..color = accentGlow.withValues(alpha: eyeAlpha),
-          );
-        }
-      }
-
-      // "Initializing..." text
-      if (eyeAppear > 0.3) {
-        final dots = '.' * dotCount;
-        final initText = TextPainter(
-          text: TextSpan(
-            text: 'Initializing$dots',
-            style: TextStyle(
-              color: subtextColor.withValues(alpha: (eyeAppear * 0.7).clamp(0.0, 0.7)),
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              letterSpacing: 2,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        initText.paint(canvas, Offset(cx - initText.width / 2, cy + 125));
-      }
-    }
-
-    // ─── 8. Scan Line Sweep ─────────────────────────────────────────────
-    if (scanLine > 0 && scanLine < 1) {
-      final sweepY = size.height * scanLine;
-      final scanPaint = Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.transparent,
-            accentPrimary.withValues(alpha: isDark ? 0.15 : 0.1),
-            accentPrimary.withValues(alpha: isDark ? 0.05 : 0.03),
-            Colors.transparent,
-          ],
-          stops: const [0.0, 0.45, 0.55, 1.0],
-        ).createShader(Rect.fromLTWH(0, sweepY - 40, size.width, 80));
-      canvas.drawRect(Rect.fromLTWH(0, sweepY - 40, size.width, 80), scanPaint);
-
-      // Bright scan line
-      canvas.drawLine(
-        Offset(0, sweepY),
-        Offset(size.width, sweepY),
-        Paint()
-          ..color = accentPrimary.withValues(alpha: isDark ? 0.3 : 0.2)
-          ..strokeWidth = 1.5,
-      );
-    }
-
-    // ─── 9. Flash Out Transition ────────────────────────────────────────
-    if (flashOut > 0) {
-      final flashOpacity = flashOut.clamp(0.0, 1.0);
-
-      // Central flash expanding
-      final flashRadius = flashOut * minDim * 1.5;
-      final flashPaint = Paint()
+      // Central core radial glow
+      final coreGlow = Paint()
         ..shader = RadialGradient(
           colors: [
-            Colors.white.withValues(alpha: flashOpacity),
-            Colors.white.withValues(alpha: flashOpacity * 0.5),
+            const Color(0xFF00E5FF).withValues(alpha: (0.25 + ambientPulse * 0.15 + chargeProgress * 0.2).clamp(0.0, 0.6)),
+            const Color(0xFF10B981).withValues(alpha: (0.15 + chargeProgress * 0.15).clamp(0.0, 0.4)),
             Colors.transparent,
           ],
-          stops: const [0.0, 0.3, 1.0],
-        ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: flashRadius));
-      canvas.drawCircle(Offset(cx, cy), flashRadius, flashPaint);
+          stops: const [0.0, 0.5, 1.0],
+        ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: baseRadius * 1.5));
+      canvas.drawCircle(Offset(cx, cy), baseRadius * 1.5, coreGlow);
 
-      // Full white overlay at end
-      if (flashOut > 0.5) {
-        final whiteAlpha = ((flashOut - 0.5) / 0.5).clamp(0.0, 1.0);
-        canvas.drawRect(
-          Rect.fromLTWH(0, 0, size.width, size.height),
-          Paint()..color = Colors.white.withValues(alpha: whiteAlpha),
+      // Outer Ring: Clockwise Segmented Arc with Precision Ticks
+      final outerRadius = baseRadius + 14;
+      final outerAngle = masterProgress * math.pi * 3.5;
+
+      final outerTrack = Paint()
+        ..color = const Color(0xFF00E5FF).withValues(alpha: isDark ? 0.18 : 0.12)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8;
+      canvas.drawCircle(Offset(cx, cy), outerRadius, outerTrack);
+
+      // Rotating Laser Arcs
+      final arcPaint = Paint()
+        ..color = const Color(0xFF00E5FF).withValues(alpha: isDark ? 0.85 : 0.65)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+
+      for (int i = 0; i < 3; i++) {
+        final start = outerAngle + i * (math.pi * 2 / 3);
+        canvas.drawArc(
+          Rect.fromCircle(center: Offset(cx, cy), radius: outerRadius),
+          start,
+          math.pi * 0.35,
+          false,
+          arcPaint,
         );
       }
-    }
-  }
 
-  void _drawBoltPath(Canvas canvas, Paint paint, double scale) {
-    final path = Path();
-    // Lightning bolt shape
-    path.moveTo(-8 * scale, -28 * scale);
-    path.lineTo(4 * scale, -5 * scale);
-    path.lineTo(-2 * scale, -5 * scale);
-    path.lineTo(8 * scale, 28 * scale);
-    path.lineTo(-4 * scale, 5 * scale);
-    path.lineTo(2 * scale, 5 * scale);
-    path.close();
-    canvas.drawPath(path, paint);
+      // Precision Tick Marks (every 30 degrees)
+      final tickPaint = Paint()
+        ..color = const Color(0xFF38BDF8).withValues(alpha: isDark ? 0.5 : 0.3)
+        ..strokeWidth = 1.2;
+      for (int i = 0; i < 12; i++) {
+        final tickAngle = i * (math.pi / 6) + masterProgress * 0.5;
+        final p1 = Offset(cx + math.cos(tickAngle) * (outerRadius - 4), cy + math.sin(tickAngle) * (outerRadius - 4));
+        final p2 = Offset(cx + math.cos(tickAngle) * (outerRadius + 4), cy + math.sin(tickAngle) * (outerRadius + 4));
+        canvas.drawLine(p1, p2, tickPaint);
+      }
+
+      // Inner Ring: Counter-Clockwise Pulsing Emerald & Cyan Ring
+      final innerRadius = baseRadius - 10;
+      final innerAngle = -masterProgress * math.pi * 4.0;
+
+      final innerArcPaint = Paint()
+        ..color = Color.lerp(
+          const Color(0xFF00E5FF),
+          const Color(0xFF10B981),
+          chargeProgress,
+        )!.withValues(alpha: (0.7 + ambientPulse * 0.3).clamp(0.0, 1.0))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.4
+        ..strokeCap = StrokeCap.round;
+
+      for (int i = 0; i < 4; i++) {
+        final start = innerAngle + i * (math.pi / 2);
+        canvas.drawArc(
+          Rect.fromCircle(center: Offset(cx, cy), radius: innerRadius),
+          start,
+          math.pi * 0.22,
+          false,
+          innerArcPaint,
+        );
+      }
+
+      // Electric Lightning Energy Arcs (crackles when charging >= 60%)
+      if (chargeProgress > 0.6) {
+        final sparkProgress = ((chargeProgress - 0.6) / 0.4).clamp(0.0, 1.0);
+        final sparkPaint = Paint()
+          ..color = Colors.white.withValues(alpha: (sparkProgress * 0.8).clamp(0.0, 0.8))
+          ..strokeWidth = 1.5
+          ..style = PaintingStyle.stroke;
+
+        final randPhase = (masterProgress * 100).toInt();
+        for (int i = 0; i < 2; i++) {
+          final sparkAngle = ((randPhase * 37 + i * 180) % 360) * math.pi / 180;
+          final sp1 = Offset(cx + math.cos(sparkAngle) * innerRadius, cy + math.sin(sparkAngle) * innerRadius);
+          final midAngle = sparkAngle + 0.15;
+          final spMid = Offset(cx + math.cos(midAngle) * (baseRadius + 6), cy + math.sin(midAngle) * (baseRadius + 6));
+          final sp2 = Offset(cx + math.cos(sparkAngle + 0.3) * outerRadius, cy + math.sin(sparkAngle + 0.3) * outerRadius);
+
+          final sparkPath = Path()
+            ..moveTo(sp1.dx, sp1.dy)
+            ..lineTo(spMid.dx, spMid.dy)
+            ..lineTo(sp2.dx, sp2.dy);
+          canvas.drawPath(sparkPath, sparkPaint);
+        }
+      }
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _SplashBootPainter old) => true;
+  bool shouldRepaint(covariant _CyberSplashPainter old) => true;
+}
+
+// ─── Volt Splash Mascot Painter (Awakening & Charging) ───────────────────────
+
+class _VoltSplashMascotPainter extends CustomPainter {
+  final double wakeProgress;
+  final double chargeProgress;
+  final double ambientPulse;
+  final bool isDark;
+
+  _VoltSplashMascotPainter({
+    required this.wakeProgress,
+    required this.chargeProgress,
+    required this.ambientPulse,
+    required this.isDark,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final center = Offset(w / 2, h / 2);
+
+    // Subtle idle float
+    final floatY = math.sin(ambientPulse * math.pi) * 3.0;
+    canvas.save();
+    canvas.translate(0, floatY);
+
+    // ─── 1. Torso & Chibi Arms (Drawn behind head) ──────────────────────────
+    final torsoRect = Rect.fromCenter(
+      center: Offset(center.dx, center.dy + 32),
+      width: 70,
+      height: 38,
+    );
+    final torsoRRect = RRect.fromRectAndRadius(torsoRect, const Radius.circular(18));
+
+    final torsoPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: isDark
+            ? [const Color(0xFFF1F5F9), const Color(0xFFCBD5E1)]
+            : [Colors.white, const Color(0xFFE2E8F0)],
+      ).createShader(torsoRect);
+
+    // Left Arm (Viewer's left)
+    canvas.save();
+    canvas.translate(center.dx - 34, center.dy + 32);
+    canvas.rotate(0.35);
+    final leftArmRect = Rect.fromCenter(center: Offset.zero, width: 13, height: 26);
+    canvas.drawRRect(RRect.fromRectAndRadius(leftArmRect, const Radius.circular(6.5)), torsoPaint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-6, 4, 12, 9), const Radius.circular(3)),
+      Paint()..color = const Color(0xFF1E293B),
+    );
+    canvas.restore();
+
+    // Right Arm (Viewer's right)
+    canvas.save();
+    canvas.translate(center.dx + 34, center.dy + 32);
+    canvas.rotate(-0.35);
+    final rightArmRect = Rect.fromCenter(center: Offset.zero, width: 13, height: 26);
+    canvas.drawRRect(RRect.fromRectAndRadius(rightArmRect, const Radius.circular(6.5)), torsoPaint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-6, 4, 12, 9), const Radius.circular(3)),
+      Paint()..color = const Color(0xFF1E293B),
+    );
+    canvas.restore();
+
+    // Solid Torso Body
+    canvas.drawRRect(torsoRRect, torsoPaint);
+
+    // Torso Rim
+    canvas.drawRRect(
+      torsoRRect,
+      Paint()
+        ..color = const Color(0xFFCBD5E1).withValues(alpha: 0.8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
+    );
+
+    // Chest Glowing Battery Core Badge
+    final coreBadgeRect = Rect.fromCenter(
+      center: Offset(center.dx, center.dy + 34),
+      width: 34,
+      height: 18,
+    );
+    final coreBadgeRRect = RRect.fromRectAndRadius(coreBadgeRect, const Radius.circular(6));
+
+    // Badge Fill (Dark emerald glass)
+    canvas.drawRRect(coreBadgeRRect, Paint()..color = const Color(0xFF042F2E));
+
+    // Badge Neon Border (Emerald / Cyan)
+    final badgeBorder = Paint()
+      ..color = const Color(0xFF10B981).withValues(alpha: (0.6 + chargeProgress * 0.4).clamp(0.0, 1.0))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+    canvas.drawRRect(coreBadgeRRect, badgeBorder);
+
+    // Glowing Lightning Bolt Glyph in Chest
+    final boltScale = 0.50;
+    canvas.save();
+    canvas.translate(center.dx, center.dy + 34);
+    canvas.scale(boltScale);
+
+    final boltPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF34D399), Color(0xFF00E5FF)],
+      ).createShader(const Rect.fromLTWH(-8, -10, 16, 20))
+      ..style = PaintingStyle.fill;
+
+    final boltGlow = Paint()
+      ..color = const Color(0xFF10B981).withValues(alpha: (0.4 + chargeProgress * 0.4).clamp(0.0, 0.8))
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+
+    final bPath = Path()
+      ..moveTo(-2.5, -9)
+      ..lineTo(2.5, -2)
+      ..lineTo(-0.8, -2)
+      ..lineTo(2.5, 9)
+      ..lineTo(-2.5, 2)
+      ..lineTo(0.8, 2)
+      ..close();
+
+    canvas.drawPath(bPath, boltGlow);
+    canvas.drawPath(bPath, boltPaint);
+    canvas.restore();
+
+    // ─── 2. Cybernetic Head Shell (Drawn OVER torso) ─────────────────────
+    final headRect = Rect.fromCenter(
+      center: Offset(center.dx, center.dy - 16),
+      width: 110,
+      height: 74,
+    );
+    final headRRect = RRect.fromRectAndRadius(headRect, const Radius.circular(32));
+
+    // Outer Head Glow
+    final headGlow = Paint()
+      ..color = const Color(0xFF00E5FF).withValues(alpha: (0.2 + ambientPulse * 0.15).clamp(0.0, 0.4))
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawRRect(headRRect, headGlow);
+
+    // Main White Chassis
+    final headPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: isDark
+            ? [const Color(0xFFF8FAFC), const Color(0xFFE2E8F0), const Color(0xFFCBD5E1)]
+            : [Colors.white, const Color(0xFFF1F5F9), const Color(0xFFE2E8F0)],
+      ).createShader(headRect);
+    canvas.drawRRect(headRRect, headPaint);
+
+    // ─── 3. Orange Audio Sensor Ears ─────────────────────────────────────
+    final earPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFFFF7A00), Color(0xFFEA580C)],
+      ).createShader(headRect);
+
+    // Left Ear
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(headRect.left - 4, headRect.center.dy), width: 14, height: 38),
+        const Radius.circular(7),
+      ),
+      earPaint,
+    );
+    // Right Ear
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(headRect.right + 4, headRect.center.dy), width: 14, height: 38),
+        const Radius.circular(7),
+      ),
+      earPaint,
+    );
+
+    // ─── 4. Black Obsidian Visor Screen ──────────────────────────────────
+    final visorRect = Rect.fromCenter(
+      center: Offset(center.dx, center.dy - 16),
+      width: 82,
+      height: 48,
+    );
+    final visorRRect = RRect.fromRectAndRadius(visorRect, const Radius.circular(20));
+
+    // Visor Glass
+    final visorPaint = Paint()..color = const Color(0xFF0B1326);
+    canvas.drawRRect(visorRRect, visorPaint);
+
+    // Visor Neon Border
+    final visorBorder = Paint()
+      ..color = const Color(0xFF38BDF8).withValues(alpha: (0.4 + wakeProgress * 0.4).clamp(0.0, 0.8))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8;
+    canvas.drawRRect(visorRRect, visorBorder);
+
+    // Visor Specular Glass Reflection
+    final glossPath = Path()
+      ..moveTo(visorRect.left + 10, visorRect.top + 8)
+      ..quadraticBezierTo(center.dx, visorRect.top + 4, visorRect.right - 10, visorRect.top + 9)
+      ..quadraticBezierTo(center.dx, visorRect.top + 6, visorRect.left + 10, visorRect.top + 8);
+    canvas.drawPath(glossPath, Paint()..color = Colors.white.withValues(alpha: 0.25));
+
+    // ─── 5. Expressive Visor Eyes (Sleeping → Awakening → Blinking) ─────
+    final eyeY = center.dy - 16;
+    final leftEyeX = center.dx - 18;
+    final rightEyeX = center.dx + 18;
+
+    final eyeColor = chargeProgress >= 0.95 ? const Color(0xFF10B981) : const Color(0xFF00E5FF);
+
+    if (wakeProgress < 0.45) {
+      // Sleeping Resting Arcs (︶ ︶)
+      final sleepPaint = Paint()
+        ..color = eyeColor.withValues(alpha: (0.4 + wakeProgress).clamp(0.0, 0.8))
+        ..strokeWidth = 2.8
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+
+      for (final x in [leftEyeX, rightEyeX]) {
+        final arc = Path()
+          ..moveTo(x - 6, eyeY)
+          ..quadraticBezierTo(x, eyeY + 4, x + 6, eyeY);
+        canvas.drawPath(arc, sleepPaint);
+      }
+    } else {
+      // Awakening: Glowing Oval Eyes with Lifelike Open & Wink
+      final openAmount = ((wakeProgress - 0.45) / 0.55).clamp(0.0, 1.0);
+
+      // Eye Glow
+      final eyeGlow = Paint()
+        ..color = eyeColor.withValues(alpha: (0.6 * openAmount).clamp(0.0, 0.7))
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.0);
+
+      final eyePaint = Paint()..color = eyeColor;
+
+      // Left Eye
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(leftEyeX, eyeY), width: 12, height: 12 * openAmount),
+        eyeGlow,
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(leftEyeX, eyeY), width: 10, height: 10 * openAmount),
+        eyePaint,
+      );
+      // Eye Specular Sparkle
+      canvas.drawCircle(Offset(leftEyeX - 2, eyeY - 2 * openAmount), 1.8, Paint()..color = Colors.white);
+
+      // Right Eye: Cheerful Wink if waking up completely
+      if (wakeProgress > 0.85) {
+        // Joyful wink inverted arc (^)
+        final winkPaint = Paint()
+          ..color = eyeColor
+          ..strokeWidth = 3.0
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
+        final winkPath = Path()
+          ..moveTo(rightEyeX - 6, eyeY + 2)
+          ..quadraticBezierTo(rightEyeX, eyeY - 4, rightEyeX + 6, eyeY + 2);
+        canvas.drawPath(winkPath, winkPaint);
+      } else {
+        canvas.drawOval(
+          Rect.fromCenter(center: Offset(rightEyeX, eyeY), width: 12, height: 12 * openAmount),
+          eyeGlow,
+        );
+        canvas.drawOval(
+          Rect.fromCenter(center: Offset(rightEyeX, eyeY), width: 10, height: 10 * openAmount),
+          eyePaint,
+        );
+        canvas.drawCircle(Offset(rightEyeX - 2, eyeY - 2 * openAmount), 1.8, Paint()..color = Colors.white);
+      }
+
+      // Sweet Blush Cheeks
+      final cheekPaint = Paint()
+        ..color = const Color(0xFFFF6B8B).withValues(alpha: (0.35 * openAmount).clamp(0.0, 0.4))
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0);
+      canvas.drawCircle(Offset(leftEyeX - 9, eyeY + 11), 3.5, cheekPaint);
+      canvas.drawCircle(Offset(rightEyeX + 9, eyeY + 11), 3.5, cheekPaint);
+    }
+
+    canvas.restore(); // Restore floatY
+  }
+
+  @override
+  bool shouldRepaint(covariant _VoltSplashMascotPainter old) => true;
 }

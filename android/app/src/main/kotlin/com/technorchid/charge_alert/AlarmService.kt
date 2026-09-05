@@ -18,6 +18,8 @@ class AlarmService : Service() {
     companion object {
         @Volatile
         var isRunning: Boolean = false
+        @Volatile
+        var isTheftActive: Boolean = false
     }
 
     private var player: MediaPlayer? = null
@@ -30,8 +32,31 @@ class AlarmService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val prefs = getSharedPreferences("ChargeAlertPrefs", Context.MODE_PRIVATE)
+        val explicitTheft = intent?.getBooleanExtra("isTheftAlarm", false) == true
+        val isTheft = if (explicitTheft || isTheftActive) {
+            true
+        } else if (prefs.getBoolean("guardianArmed", false)) {
+            // Only consider theft if device is unplugged from power
+            val ifilter = android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+            val bIntent = registerReceiver(null, ifilter)
+            val plugged = bIntent?.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0) ?: 0
+            plugged == 0
+        } else {
+            false
+        }
+        if (isTheft) {
+            isTheftActive = true
+        }
+
         // Handle stop action
         if (intent?.action == "STOP_ALARM") {
+            val isAuthorized = intent.getBooleanExtra("authorized_theft_stop", false)
+            if (isTheftActive && !isAuthorized) {
+                // Security: Do not allow unauthorized dismissal during an active theft emergency!
+                return START_STICKY
+            }
+            isTheftActive = false
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     stopForeground(STOP_FOREGROUND_REMOVE)
@@ -44,36 +69,54 @@ class AlarmService : Service() {
             return START_NOT_STICKY
         }
 
-        // Build fullscreen intent to show AlarmActivity
-        val fullScreenIntent = Intent(this, AlarmActivity::class.java)
-        fullScreenIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        // Build target intent: during theft alarm, route directly to MainActivity with PIN lockout screen.
+        // For normal charging alarms, route to AlarmActivity.
+        val targetIntent = if (isTheft) {
+            Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                putExtra("isTheftAlarm", true)
+            }
+        } else {
+            Intent(this, AlarmActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+        }
+
         val fullScreenPendingIntent = PendingIntent.getActivity(
             this,
             0,
-            fullScreenIntent,
+            targetIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
         )
 
-        // Stop action
-        val stopIntent = Intent(this, AlarmService::class.java).apply { action = "STOP_ALARM" }
-        val stopPending = PendingIntent.getService(
-            this,
-            1,
-            stopIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
-        )
-
-        val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notifBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("ChargeAlert")
-            .setContentText("Charging alarm is ringing! Tap to stop.")
+            .setContentTitle(if (isTheft) "🚨 THEFT ALARM TRIGGERED!" else "ChargeAlert")
+            .setContentText(
+                if (isTheft) "Charger was disconnected! Tap to disarm with PIN."
+                else "Charging alarm is ringing! Tap to stop."
+            )
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setFullScreenIntent(fullScreenPendingIntent, true)
-            .addAction(R.mipmap.ic_launcher, "Stop", stopPending)
+            .setContentIntent(fullScreenPendingIntent)
             .setOngoing(true)
             .setAutoCancel(false)
-            .build()
+
+        // Only add "Stop" action button for normal charging alerts.
+        // During emergency theft alarm, NO stop button is shown so the alarm cannot be bypassed without PIN!
+        if (!isTheft) {
+            val stopIntent = Intent(this, AlarmService::class.java).apply { action = "STOP_ALARM" }
+            val stopPending = PendingIntent.getService(
+                this,
+                1,
+                stopIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+            )
+            notifBuilder.addAction(R.mipmap.ic_launcher, "Stop", stopPending)
+        }
+
+        val notification: Notification = notifBuilder.build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
@@ -86,8 +129,8 @@ class AlarmService : Service() {
         started.setPackage(packageName)
         sendBroadcast(started)
 
-        val prefs = getSharedPreferences("ChargeAlertPrefs", Context.MODE_PRIVATE)
-        val isContinuous = prefs.getBoolean("continuousAlarm", false)
+        // For emergency theft alarm, always loop siren continuously until disarmed with PIN
+        val isContinuous = isTheft || prefs.getBoolean("continuousAlarm", false)
 
         // Start playing the alarm sound
         try {
@@ -125,6 +168,7 @@ class AlarmService : Service() {
 
     override fun onDestroy() {
         isRunning = false
+        isTheftActive = false
         super.onDestroy()
         try {
             player?.stop()

@@ -28,7 +28,11 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "startService" -> {
                     try {
-                        val intent = Intent(this, AlarmService::class.java)
+                        val args = call.arguments as? Map<*, *>
+                        val isTheft = args?.get("isTheft") as? Boolean ?: false
+                        val intent = Intent(this, AlarmService::class.java).apply {
+                            if (isTheft) putExtra("isTheftAlarm", true)
+                        }
                         ContextCompat.startForegroundService(this, intent)
                         result.success(true)
                     } catch (e: Exception) {
@@ -37,7 +41,10 @@ class MainActivity : FlutterActivity() {
                 }
                 "stopService" -> {
                     try {
-                        val intent = Intent(this, AlarmService::class.java).apply { action = "STOP_ALARM" }
+                        val intent = Intent(this, AlarmService::class.java).apply {
+                            action = "STOP_ALARM"
+                            putExtra("authorized_theft_stop", true)
+                        }
                         startService(intent)
                         result.success(true)
                     } catch (e: Exception) {
@@ -235,6 +242,14 @@ class MainActivity : FlutterActivity() {
             registerReceiver(alarmBroadcastReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             registerReceiver(alarmBroadcastReceiver, filter)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra("isTheftAlarm", false)) {
+            methodChannel?.invokeMethod("onTheftAlarmTriggered", null)
         }
     }
 

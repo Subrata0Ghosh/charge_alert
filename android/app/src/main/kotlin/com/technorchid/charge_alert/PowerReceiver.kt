@@ -36,23 +36,45 @@ class PowerReceiver : BroadcastReceiver() {
                 }
             }
             Intent.ACTION_POWER_DISCONNECTED -> {
-                // Stop active alarm, and only stop monitoring if low-battery alert is disabled
-                try {
-                    val stopAlarm = Intent(context, AlarmService::class.java).apply { action = "STOP_ALARM" }
-                    ContextCompat.startForegroundService(context, stopAlarm)
-                } catch (_: Exception) {}
                 val prefs = context.getSharedPreferences("ChargeAlertPrefs", Context.MODE_PRIVATE)
+                val guardianArmed = prefs.getBoolean("guardianArmed", false)
                 val lowEnabled = prefs.getBoolean("lowAlarmEnabled", false)
-                if (!lowEnabled) {
+
+                if (guardianArmed) {
+                    // Anti-Theft alert triggered! Do NOT stop alarm; start AlarmService in theft mode
                     try {
-                        context.stopService(Intent(context, MonitorService::class.java))
+                        val startAlarm = Intent(context, AlarmService::class.java).apply {
+                            putExtra("isTheftAlarm", true)
+                        }
+                        ContextCompat.startForegroundService(context, startAlarm)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                    // Bring MainActivity to the front to prompt for the disarm PIN
+                    try {
+                        val mainIntent = Intent(context, MainActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                            putExtra("isTheftAlarm", true)
+                        }
+                        context.startActivity(mainIntent)
                     } catch (_: Exception) {}
                 } else {
-                    // Ensure monitor keeps running for low-battery tracking
+                    // Normal charging alert: unplugging stops the charging alarm
                     try {
-                        val monitorIntent = Intent(context, MonitorService::class.java)
-                        ContextCompat.startForegroundService(context, monitorIntent)
+                        val stopAlarm = Intent(context, AlarmService::class.java).apply { action = "STOP_ALARM" }
+                        ContextCompat.startForegroundService(context, stopAlarm)
                     } catch (_: Exception) {}
+                    if (!lowEnabled) {
+                        try {
+                            context.stopService(Intent(context, MonitorService::class.java))
+                        } catch (_: Exception) {}
+                    } else {
+                        // Ensure monitor keeps running for low-battery tracking
+                        try {
+                            val monitorIntent = Intent(context, MonitorService::class.java)
+                            ContextCompat.startForegroundService(context, monitorIntent)
+                        } catch (_: Exception) {}
+                    }
                 }
             }
         }
