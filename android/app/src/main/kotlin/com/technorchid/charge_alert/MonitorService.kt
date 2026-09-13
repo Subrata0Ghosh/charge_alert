@@ -11,7 +11,10 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.PowerManager
 import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -21,12 +24,26 @@ class MonitorService : Service() {
     private val NOTIF_ID = 1002
 
     private var batteryReceiver: BroadcastReceiver? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+    private val handler = Handler(Looper.getMainLooper())
+
+    // Fallback periodic check to ensure we catch battery level changes even
+    // if ACTION_BATTERY_CHANGED delivery is throttled during Doze
+    private val periodicCheck = object : Runnable {
+        override fun run() {
+            checkBatteryAndTrigger()
+            handler.postDelayed(this, 60_000) // every 60 seconds
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        acquireWakeLock()
         startInForeground()
         registerBatteryReceiver()
+        // Start fallback periodic polling after an initial 60s delay
+        handler.postDelayed(periodicCheck, 60_000)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -38,6 +55,8 @@ class MonitorService : Service() {
     }
 
     override fun onDestroy() {
+        handler.removeCallbacks(periodicCheck)
+        releaseWakeLock()
         super.onDestroy()
         try {
             if (batteryReceiver != null) unregisterReceiver(batteryReceiver)
@@ -53,6 +72,72 @@ class MonitorService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun acquireWakeLock() {
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = pm.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "ChargeAlert::MonitorWakeLock"
+            ).apply {
+                acquire() // Held for the lifetime of the foreground service
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+            wakeLock = null
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * Fallback battery check using BatteryManager API (does not depend on
+     * broadcast delivery). Called periodically by the Handler to guard
+     * against Doze-throttled ACTION_BATTERY_CHANGED broadcasts.
+     */
+    private fun checkBatteryAndTrigger() {
+        try {
+            val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+            val percent = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+
+            // Determine charging status from the sticky battery intent
+            val batteryStatus = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+            val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+
+            val prefs = getSharedPreferences("ChargeAlertPrefs", Context.MODE_PRIVATE)
+            val enabled = prefs.getBoolean("alarmEnabled", true)
+            val target = prefs.getFloat("alertPercentage", 80f).toInt()
+            val lowEnabled = prefs.getBoolean("lowAlarmEnabled", false)
+            val lowTarget = prefs.getFloat("lowAlertPercentage", 15f).toInt()
+            val guardianArmed = prefs.getBoolean("guardianArmed", false)
+
+            if (percent >= 0) {
+                updateNotification(percent, isCharging, target)
+
+                if (isCharging) {
+                    if (enabled && percent >= target && !AlarmService.isRunning) {
+                        try {
+                            val serviceIntent = Intent(this, AlarmService::class.java)
+                            ContextCompat.startForegroundService(this, serviceIntent)
+                        } catch (_: Exception) {}
+                    }
+                } else {
+                    // Low-battery alarm
+                    if (lowEnabled && percent <= lowTarget && !AlarmService.isRunning) {
+                        try {
+                            val serviceIntent = Intent(this, AlarmService::class.java)
+                            ContextCompat.startForegroundService(this, serviceIntent)
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+    }
 
     private fun buildNotification(contentText: String): Notification {
         val stopIntent = Intent(this, MonitorService::class.java).apply { action = "STOP_MONITOR" }

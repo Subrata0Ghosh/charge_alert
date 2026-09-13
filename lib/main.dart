@@ -529,6 +529,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
     _checkInitialAlarmState();
     _initializeBatteryMonitoring();
     _fetchBatteryDetails();
+    _requestBatteryOptimizationIfNeeded();
   }
 
   void _setupPlatformListener() {
@@ -606,6 +607,34 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
     } catch (_) {}
   }
 
+  /// Ensures the native MonitorService foreground service is running so that
+  /// battery monitoring continues even after the Flutter engine is destroyed
+  /// (i.e. user closes the app). This is the critical fix for alarms not
+  /// firing when the phone is idle or the app is not open.
+  Future<void> _ensureNativeMonitorRunning() async {
+    if (!Platform.isAndroid) return;
+    final alarmEnabled = ref.read(alarmEnabledProvider);
+    final lowEnabled = ref.read(lowAlarmEnabledProvider);
+    final guardianArmed = ref.read(guardianArmedProvider);
+    if (alarmEnabled || lowEnabled || guardianArmed) {
+      try {
+        await _platform.invokeMethod('startMonitorService');
+      } catch (_) {}
+    }
+  }
+
+  /// Request battery optimization exemption so Android doesn't kill the
+  /// foreground service during Doze. Only prompts once if not already exempt.
+  Future<void> _requestBatteryOptimizationIfNeeded() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final isExempt = await _platform.invokeMethod<bool>('isIgnoringBatteryOptimizations');
+      if (isExempt != true) {
+        await _platform.invokeMethod('requestBatteryOptimizationExemption');
+      }
+    } catch (_) {}
+  }
+
   Future<void> _initializeBatteryMonitoring() async {
     // Get initial battery level
     try {
@@ -641,6 +670,9 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
 
     // Start periodic monitoring
     _startPeriodicCheck();
+
+    // Proactively start the native MonitorService so monitoring survives app closure
+    _ensureNativeMonitorRunning();
   }
 
   void _startPeriodicCheck() {
@@ -801,6 +833,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
       if (confirmed == true && mounted) {
         _previousBatteryState = BatteryState.charging;
         await ref.read(guardianArmedProvider.notifier).setArmed(true);
+        _ensureNativeMonitorRunning();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -1549,6 +1582,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                           activeThumbColor: color,
                           onChanged: (value) {
                             ref.read(alarmEnabledProvider.notifier).toggle();
+                            if (value) _ensureNativeMonitorRunning();
                           },
                         ),
                         SwitchListTile(
@@ -1580,6 +1614,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                           activeThumbColor: color,
                           onChanged: (value) {
                             ref.read(lowAlarmEnabledProvider.notifier).toggle();
+                            if (value) _ensureNativeMonitorRunning();
                           },
                         ),
                         Padding(

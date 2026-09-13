@@ -12,6 +12,8 @@ class BootReceiver : BroadcastReceiver() {
             val prefs = context.getSharedPreferences("ChargeAlertPrefs", Context.MODE_PRIVATE)
             val enabled = prefs.getBoolean("alarmEnabled", true)
             val target = prefs.getFloat("alertPercentage", 80f).toInt()
+            val lowEnabled = prefs.getBoolean("lowAlarmEnabled", false)
+            val guardianArmed = prefs.getBoolean("guardianArmed", false)
 
             // Query current battery state
             val bm = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
@@ -22,14 +24,22 @@ class BootReceiver : BroadcastReceiver() {
             val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
             val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
 
-            if (isCharging) {
-                // Start monitor always when charging after boot
-                val monitorIntent = Intent(context, MonitorService::class.java)
-                ContextCompat.startForegroundService(context, monitorIntent)
-                // If threshold already reached, start alarm immediately
-                if (enabled && level >= target) {
-                    val serviceIntent = Intent(context, AlarmService::class.java)
-                    ContextCompat.startForegroundService(context, serviceIntent)
+            // Start MonitorService if any monitoring feature needs it:
+            // - Charging: always start to track target
+            // - Low battery alert enabled: need to monitor drain even when not charging
+            // - Guardian armed: need to detect unplug events
+            if (isCharging || lowEnabled || guardianArmed) {
+                try {
+                    val monitorIntent = Intent(context, MonitorService::class.java)
+                    ContextCompat.startForegroundService(context, monitorIntent)
+                } catch (_: Exception) {}
+
+                // If threshold already reached while charging, start alarm immediately
+                if (isCharging && enabled && level >= target) {
+                    try {
+                        val serviceIntent = Intent(context, AlarmService::class.java)
+                        ContextCompat.startForegroundService(context, serviceIntent)
+                    } catch (_: Exception) {}
                 }
             }
         }

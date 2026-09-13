@@ -213,6 +213,48 @@ class MainActivity : FlutterActivity() {
                         result.error("INVALID_ARGS", "Missing key/type", null)
                     }
                 }
+                "startMonitorService" -> {
+                    try {
+                        val intent = Intent(this, MonitorService::class.java)
+                        ContextCompat.startForegroundService(this, intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("START_MONITOR_ERROR", e.message, null)
+                    }
+                }
+                "stopMonitorService" -> {
+                    try {
+                        val intent = Intent(this, MonitorService::class.java).apply { action = "STOP_MONITOR" }
+                        startService(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("STOP_MONITOR_ERROR", e.message, null)
+                    }
+                }
+                "isIgnoringBatteryOptimizations" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                        result.success(pm.isIgnoringBatteryOptimizations(packageName))
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "requestBatteryOptimizationExemption" -> {
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                intent.data = Uri.parse("package:$packageName")
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                startActivity(intent)
+                            }
+                        }
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("BATTERY_OPT_ERROR", e.message, null)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
