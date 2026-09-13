@@ -39,14 +39,14 @@
         </activity>
         <activity
             android:name=".AlarmActivity"
-            android:exported="true"
+            android:exported="false"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:theme="@style/NormalTheme" />
 
         <service
             android:name=".AlarmService"
-            android:exported="true"
+            android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
         <!-- Foreground service to monitor charging and trigger alarm when target is reached -->
         <service

@@ -14,7 +14,7 @@
 [![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20iOS-lightgrey)](https://android.com)
 [![State Management](https://img.shields.io/badge/State-Riverpod-6f42c1)](https://riverpod.dev)
 [![Charts](https://img.shields.io/badge/Charts-fl__chart-ff69b4)](https://pub.dev/packages/fl_chart)
-[![Release](https://img.shields.io/badge/Release-v1.0.2%2B3-blue)](https://github.com/Subrata0Ghosh/charge_alert/releases)
+[![Release](https://img.shields.io/badge/Release-v1.0.3%2B4-blue)](https://github.com/Subrata0Ghosh/charge_alert/releases)
 [![License](https://img.shields.io/badge/License-MIT-brightgreen)](LICENSE)
 
 </div>
