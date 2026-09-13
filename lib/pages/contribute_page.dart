@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ContributePage extends StatelessWidget {
@@ -9,22 +10,9 @@ class ContributePage extends StatelessWidget {
   static const String payeeName = 'TechnOrchid';
 
   String get _upiUri {
-    final params = {
-      'pa': upiId, // payee address
-      'pn': payeeName, // payee name
-      'cu': 'INR',
-      // Optional note. Keep short for QR payloads
-      'tn': 'Support',
-    };
-    final query = params.entries
-        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
-        .join('&');
-    return 'upi://pay?$query';
-  }
-
-  String get _qrApiUrl {
-    final data = Uri.encodeComponent(_upiUri);
-    return 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=$data';
+    final encodedPn = Uri.encodeComponent(payeeName);
+    final encodedTn = Uri.encodeComponent('Support');
+    return 'upi://pay?pa=$upiId&pn=$encodedPn&cu=INR&tn=$encodedTn';
   }
 
   @override
@@ -46,9 +34,9 @@ class ContributePage extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(20),
                   gradient: LinearGradient(
                     colors: [
                       theme.colorScheme.primary.withValues(alpha: 0.12),
@@ -60,48 +48,48 @@ class ContributePage extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        _qrApiUrl,
-                        width: 230,
-                        height: 230,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const SizedBox(
-                            width: 230,
-                            height: 230,
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 230,
-                            height: 230,
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.qr_code, size: 64, color: theme.colorScheme.primary),
-                                const SizedBox(height: 8),
-                                Text('Scan QR Code', style: theme.textTheme.bodyMedium),
-                              ],
-                            ),
-                          );
-                        },
+                    // High-contrast white card with generous padding (quiet zone)
+                    // ensuring finder patterns are never clipped or distorted
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: QrImageView(
+                        data: _upiUri,
+                        version: QrVersions.auto,
+                        size: 210,
+                        gapless: true,
+                        errorCorrectionLevel: QrErrorCorrectLevel.M,
+                        eyeStyle: const QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: Colors.black,
+                        ),
+                        dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleShape: QrDataModuleShape.square,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     Text(
-                      'Google Pay / UPI',
+                      'Google Pay / PhonePe / Paytm / BHIM',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
-                      'Tip: If scan fails, use the button below to open your UPI app directly.',
+                      'Scan using any UPI app or camera scanner',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       ),

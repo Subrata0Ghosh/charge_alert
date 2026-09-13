@@ -41,6 +41,7 @@ dependencies:
   fl_chart: ^0.69.0
 
   audioplayers: ^6.5.1
+  qr_flutter: ^4.1.0
   # Keep dependencies lean for smaller APK/AAB size
 
 dev_dependencies:
