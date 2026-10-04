@@ -1,0 +1,7 @@
+file 's1_fast.mp3'
+file 's2_fast.mp3'
+file 's3_fast.mp3'
+file 's4_fast.mp3'
+file 's5_fast.mp3'
+file 's6_fast.mp3'
+file 's7_fast.mp3'

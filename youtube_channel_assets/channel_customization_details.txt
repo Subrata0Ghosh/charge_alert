@@ -1,0 +1,74 @@
+# ==============================================================================
+# YOUTUBE CHANNEL CUSTOMIZATION - READY TO COPY & PASTE
+# Channel: Subrata Ghosh (@subrata6799)
+# ==============================================================================
+
+--------------------------------------------------------------------------------
+1. CHANNEL DESCRIPTION (About Section)
+--------------------------------------------------------------------------------
+Copy and paste this into the "Description" box:
+
+Welcome to my official YouTube channel! 🚀 
+
+I am Subrata Ghosh, a passionate Mobile Application Developer & Software Engineer specializing in Flutter, Android, and innovative consumer tech applications.
+
+Here you'll find:
+⚡ App Feature Spotlights & Demos (Charge Alert, BLINK: Cosmic Observer)
+🛠️ Flutter & Android Development tutorials, UI/UX breakdowns & devlogs
+💡 Smart utility tools to protect your device battery, optimize performance & enhance privacy
+📱 First-look previews of my latest mobile app releases on Google Play
+
+Featured Apps:
+• Charge Alert — Smart Battery Guardian & Anti-Theft Alarm (Available on Google Play)
+• BLINK: Cosmic Observer — Deep space astronomy telemetry & tracking
+
+🔔 Subscribe to stay updated with future app releases, tech tutorials, and developer updates!
+
+💼 Business Inquiries & Collaborations: [Add your contact email here]
+💻 GitHub: https://github.com/Subrata0Ghosh
+
+#Flutter #AndroidDev #ChargeAlert #MobileApps #TechInnovation #Developer
+
+
+--------------------------------------------------------------------------------
+2. LINKS TO ADD (Click "+ Add link")
+--------------------------------------------------------------------------------
+Link 1:
+- Link title: Get Charge Alert on Play Store
+- URL: [Paste your Google Play Store Charge Alert URL]
+
+Link 2:
+- Link title: GitHub (Subrata0Ghosh)
+- URL: https://github.com/Subrata0Ghosh
+
+Link 3:
+- Link title: BLINK: Cosmic Observer
+- URL: [Paste your Google Play Store BLINK URL]
+
+
+--------------------------------------------------------------------------------
+3. ASSETS & IMAGE FILES (Generated & Ready in this folder)
+--------------------------------------------------------------------------------
+📁 Location: youtube_channel_assets\
+
+1. Banner Image (2560 x 1440 px, Safe Area Centered):
+   - Option A (Developer & Channel Branding): 
+     youtube_channel_assets\youtube_banner_subrata_ghosh.png
+   - Option B (Charge Alert App Focus): 
+     youtube_channel_assets\youtube_banner_charge_alert.png
+
+2. Profile Picture / Logo (800 x 800 px):
+   - Modern Neon 'SG' Tech Emblem: 
+     youtube_channel_assets\youtube_profile_logo_sg.png
+   - (Or keep your current photo in red shirt!)
+
+3. Video Watermark (Bottom-Right Subscribe Button):
+   - High-Converting YouTube Red Button: 
+     youtube_channel_assets\youtube_watermark_subscribe_150x150.png
+     (also 500x500 high-res: youtube_watermark_subscribe_500x500.png)
+   - Cyber Tech Blue Style: 
+     youtube_channel_assets\youtube_watermark_tech_150x150.png
+     (also 500x500: youtube_watermark_tech_500x500.png)
+
+Recommended Watermark Setting in YouTube Studio:
+- Display time: Select "Entire video" for maximum subscriber growth!
