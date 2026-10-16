@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n/app_localizations.dart';
 
 class ContributePage extends StatelessWidget {
   const ContributePage({super.key});
@@ -18,8 +19,9 @@ class ContributePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Contribute')),
+      appBar: AppBar(title: Text(l10n?.contribute ?? 'Contribute')),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -29,7 +31,7 @@ class ContributePage extends StatelessWidget {
             children: [
               const SizedBox(height: 4),
               Text(
-                'Scan to contribute',
+                l10n?.scanToContribute ?? 'Scan to contribute',
                 style: theme.textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
@@ -89,7 +91,7 @@ class ContributePage extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Scan using any UPI app or camera scanner',
+                      l10n?.scanUsingUpi ?? 'Scan using any UPI app or camera scanner',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
@@ -103,7 +105,7 @@ class ContributePage extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.open_in_new),
-                  label: const Text('Open in UPI app'),
+                  label: Text(l10n?.openInUpiApp ?? 'Open in UPI app'),
                   onPressed: () async {
                     final ok = await launchUrl(
                       Uri.parse(_upiUri),
@@ -112,7 +114,7 @@ class ContributePage extends StatelessWidget {
                     if (!ok) {
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Could not open a UPI app. Try scanning the QR or copy details below.')),
+                        SnackBar(content: Text(l10n?.couldNotOpenUpi ?? 'Could not open a UPI app. Try scanning the QR or copy details below.')),
                       );
                     }
                   },
@@ -138,11 +140,11 @@ class ContributePage extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Copy',
+                      tooltip: l10n?.copyTooltip ?? 'Copy',
                       onPressed: () {
-                        Clipboard.setData(ClipboardData(text: upiId));
+                        Clipboard.setData(const ClipboardData(text: upiId));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('UPI ID copied')),
+                          SnackBar(content: Text(l10n?.upiIdCopied ?? 'UPI ID copied')),
                         );
                       },
                       icon: const Icon(Icons.copy),
@@ -170,11 +172,11 @@ class ContributePage extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Copy',
+                      tooltip: l10n?.copyTooltip ?? 'Copy',
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: _upiUri));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('UPI intent copied')),
+                          SnackBar(content: Text(l10n?.upiIntentCopied ?? 'UPI intent copied')),
                         );
                       },
                       icon: const Icon(Icons.copy),

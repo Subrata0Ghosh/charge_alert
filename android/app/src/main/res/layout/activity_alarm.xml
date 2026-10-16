@@ -10,7 +10,7 @@
         android:id="@+id/alarmTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Charging Alert"
+        android:text="@string/charging_alert"
         android:textColor="#FFFFFF"
         android:textSize="32sp"
         android:layout_marginBottom="24dp" />
@@ -19,7 +19,7 @@
         android:id="@+id/stopButton"
         android:layout_width="220dp"
         android:layout_height="80dp"
-        android:text="Stop Alarm"
+        android:text="@string/stop_alarm"
         android:textSize="20sp"
         android:background="@android:color/holo_red_light"
         android:textColor="#FFFFFF" />

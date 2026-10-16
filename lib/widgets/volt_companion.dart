@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 enum VoltMood {
   charging,
@@ -439,33 +440,34 @@ class _VoltCompanionState extends State<VoltCompanion>
   }
 
   String _getInteractiveQuote() {
+    final l10n = AppLocalizations.of(context);
     switch (widget.mood) {
       case VoltMood.charging:
         final quotes = [
           widget.speechText,
-          "⚡ Absorbing clean juice! Battery core feels great!",
-          "🚀 Fast flow detected. We'll be fully powered soon!",
-          "💡 Keeping charge under 85% extends battery cell health!",
+          l10n?.voltCleanJuice ?? "⚡ Absorbing clean juice! Battery core feels great!",
+          l10n?.voltFastFlow ?? "🚀 Fast flow detected. We'll be fully powered soon!",
+          l10n?.voltHealthTip ?? "💡 Keeping charge under 85% extends battery cell health!",
         ];
         return quotes[(_quoteCycleIndex++) % quotes.length];
       case VoltMood.targetReached:
-        return "🎉 Charge goal reached! Ready to unplug!";
+        return l10n?.voltTargetReached ?? "🎉 Charge goal reached! Ready to unplug!";
       case VoltMood.guardianArmed:
         final quotes = [
-          "🛡️ Guardian Active! Step away, I've got your phone covered!",
-          "🚨 Warning: Any unauthorized unplug sounds the loud siren!",
+          l10n?.voltPhoneCovered ?? "🛡️ Guardian Active! Step away, I've got your phone covered!",
+          l10n?.voltUnplugWarning ?? "🚨 Warning: Any unauthorized unplug sounds the loud siren!",
         ];
         return quotes[(_quoteCycleIndex++) % quotes.length];
       case VoltMood.lowBattery:
-        return "🪫 My power cells are drained... please plug me in!";
+        return l10n?.voltLowBattery ?? "🪫 My power cells are drained... please plug me in!";
       case VoltMood.overheating:
-        return "🔥 Thermal sensors are hot! Let's cool down a bit!";
+        return l10n?.voltOverheating ?? "🔥 Thermal sensors are hot! Let's cool down a bit!";
       case VoltMood.normal:
         final quotes = [
           widget.speechText,
-          "✨ Battery cells, voltage, and thermals all 100% healthy!",
-          "🤖 Hey! I'm Volt, your personal battery guardian companion!",
-          "💚 Standing by and keeping an eye on your hardware!",
+          l10n?.voltAllHealthy ?? "✨ Battery cells, voltage, and thermals all 100% healthy!",
+          l10n?.voltGreetingCompanion ?? "🤖 Hey! I'm Volt, your personal battery guardian companion!",
+          l10n?.voltStandingBy ?? "💚 Standing by and keeping an eye on your hardware!",
         ];
         return quotes[(_quoteCycleIndex++) % quotes.length];
     }
@@ -488,7 +490,8 @@ class _VoltCompanionState extends State<VoltCompanion>
       });
 
       _performWaveRoutine(cycles: 2);
-      _triggerBubble("⚡ Volt is awake! Battery guardian ready!");
+      final l10n = AppLocalizations.of(context);
+      _triggerBubble(l10n?.voltAwake ?? "⚡ Volt is awake! Battery guardian ready!");
       _scheduleNextBehavior();
       widget.onTap?.call();
       return;

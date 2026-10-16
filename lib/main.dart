@@ -18,6 +18,9 @@ import 'pages/privacy_policy_page.dart';
 import 'widgets/liquid_core_painter.dart';
 import 'widgets/volt_companion.dart';
 import 'widgets/guardian_dialog.dart';
+import 'l10n/app_localizations.dart';
+import 'l10n/app_localizations_en.dart';
+import 'l10n/locale_provider.dart';
 
 class BatteryDetails {
   final double temperature;
@@ -353,9 +356,13 @@ class ChargeAlertApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final selectedLocale = ref.watch(localeProvider);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'ChargeAlert',
+      locale: selectedLocale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       themeMode: themeMode,
       theme: ThemeData(
         useMaterial3: true,
@@ -457,7 +464,62 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
   BatteryState? _previousBatteryState;
   bool _isTheftLockoutShowing = false;
 
+  void _showLanguageDialog(BuildContext context) {
+    final currentLocale = ref.read(localeProvider);
+    final currentCode = currentLocale?.languageCode;
+    final l10n = AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.language_rounded, color: Color(0xFF00E5FF)),
+            const SizedBox(width: 10),
+            Text(l10n.languageSelect),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: supportedAppLanguages.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final lang = supportedAppLanguages[index];
+              final isSelected = lang.code == currentCode;
+              return ListTile(
+                key: Key('lang_${lang.code ?? "default"}'),
+                leading: Text(lang.flag, style: const TextStyle(fontSize: 22)),
+                title: Text(
+                  lang.nativeName,
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                  ),
+                ),
+                subtitle: lang.code != null ? Text(lang.name) : null,
+                trailing: isSelected ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary) : null,
+                onTap: () {
+                  ref.read(localeProvider.notifier).setLocale(lang.code);
+                  Navigator.pop(ctx);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.close),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showFaqBottomSheet(BuildContext context) {
+    final l10n = AppLocalizations.of(context) ?? AppLocalizationsEn();
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -470,12 +532,12 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Quick FAQ', style: Theme.of(ctx).textTheme.titleMedium),
+                Text(l10n.quickFaqTitle, style: Theme.of(ctx).textTheme.titleMedium),
                 const SizedBox(height: 12),
-                Text('• Why didn\'t the alarm ring?'),
+                Text('• ${l10n.faqWhyNoAlarm}'),
                 const SizedBox(height: 4),
                 Text(
-                  'Ensure background activity is allowed, autostart/startup is enabled, and notifications have sound. Use the shortcuts below to open settings.',
+                  l10n.faqWhyNoAlarmDesc,
                   style: Theme.of(ctx).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 12),
@@ -485,21 +547,21 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                   children: [
                     OutlinedButton.icon(
                       icon: const Icon(Icons.battery_saver, size: 18),
-                      label: const Text('Background activity'),
+                      label: Text(l10n.faqBackgroundActivity),
                       onPressed: () async {
                         try { await _platform.invokeMethod('openSettings', {'type': 'app_battery_settings'}); } catch (_) {}
                       },
                     ),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.start, size: 18),
-                      label: const Text('Autostart'),
+                      label: Text(l10n.faqAutostart),
                       onPressed: () async {
                         try { await _platform.invokeMethod('openSettings', {'type': 'autostart_settings'}); } catch (_) {}
                       },
                     ),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.notifications_active, size: 18),
-                      label: const Text('Notifications'),
+                      label: Text(l10n.faqNotifications),
                       onPressed: () async {
                         try { await _platform.invokeMethod('openSettings', {'type': 'notification_settings'}); } catch (_) {}
                       },
@@ -507,13 +569,13 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text('• How to allow autostart/startup?'),
+                Text('• ${l10n.faqOemSettings}'),
                 const SizedBox(height: 4),
                 Text(
-                  'Different brands place this in OEM settings (e.g., Xiaomi/OPPO/Vivo). Use the Autostart shortcut above and enable startup for ChargeAlert.',
+                  l10n.faqOemSettingsDesc,
                   style: Theme.of(ctx).textTheme.bodySmall,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -812,12 +874,13 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
   Future<void> _handleGuardianToggle(bool targetArmed) async {
     final currentPin = ref.read(theftPinProvider);
     final currentState = ref.read(batteryStateProvider);
+    final l10n = AppLocalizations.of(context) ?? AppLocalizationsEn();
 
     if (targetArmed) {
       if (currentState != BatteryState.charging && currentState != BatteryState.full) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('⚠️ Please plug in your charger before arming Guardian Mode!'),
+          SnackBar(
+            content: Text(l10n.plugInChargerFirst),
             backgroundColor: Colors.orange,
             behavior: SnackBarBehavior.floating,
           ),
@@ -836,8 +899,8 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
         _ensureNativeMonitorRunning();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('🛡️ Guardian Mode Armed! Alarm will sound if unplugged.'),
+            SnackBar(
+              content: Text(l10n.guardianArmedSnack),
               backgroundColor: Colors.indigo,
               behavior: SnackBarBehavior.floating,
             ),
@@ -854,8 +917,8 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
         await ref.read(guardianArmedProvider.notifier).setArmed(false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Guardian Mode Disarmed.'),
+            SnackBar(
+              content: Text(l10n.guardianDisarmedSnack),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -867,6 +930,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
   Future<void> _changePinDialog() async {
     final pinController = TextEditingController();
     String? error;
+    final l10n = AppLocalizations.of(context) ?? AppLocalizationsEn();
 
     await showDialog(
       context: context,
@@ -874,20 +938,20 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
         builder: (ctx, setDState) => AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.password, color: Color(0xFF38BDF8)),
-              SizedBox(width: 8),
-              Text('Change Security PIN', style: TextStyle(color: Colors.white, fontSize: 18)),
+              const Icon(Icons.password, color: Color(0xFF38BDF8)),
+              const SizedBox(width: 8),
+              Text(l10n.changeSecurityPin, style: const TextStyle(color: Colors.white, fontSize: 18)),
             ],
           ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Enter a new 4-digit PIN for Guardian Mode.',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                Text(
+                  l10n.setPinPrompt,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -912,7 +976,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+              child: Text(l10n.cancel, style: const TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -921,13 +985,13 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                   ref.read(theftPinProvider.notifier).setPin(newPin);
                   Navigator.of(ctx).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Security PIN updated successfully!'), behavior: SnackBarBehavior.floating),
+                    SnackBar(content: Text(l10n.pinUpdatedSuccess), behavior: SnackBarBehavior.floating),
                   );
                 } else {
-                  setDState(() => error = 'Must be exactly 4 digits');
+                  setDState(() => error = l10n.enterPin);
                 }
               },
-              child: const Text('Save PIN'),
+              child: Text(l10n.savePin),
             ),
           ],
         ),
@@ -948,17 +1012,17 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
     return VoltMood.normal;
   }
 
-  String _getVoltSpeech(int batteryLevel, BatteryState batteryState, bool isArmed) {
-    if (_isAlarming) return "🚨 INTRUSION OR ALERT! Stop the alarm!";
-    if (isArmed) return "🛡️ Guardian Armed. Unplugging triggers loud siren!";
-    if (_batteryDetails.temperature > 42) return "🔥 I'm running hot! Please give me some air!";
+  String _getVoltSpeech(int batteryLevel, BatteryState batteryState, bool isArmed, [AppLocalizations? l10n]) {
+    if (_isAlarming) return l10n?.voltTheftAlarm ?? "🚨 INTRUSION OR ALERT! Stop the alarm!";
+    if (isArmed) return l10n?.voltGuardianArmed ?? "🛡️ Guardian Armed. Unplugging triggers loud siren!";
+    if (_batteryDetails.temperature > 42) return l10n?.voltOverheating ?? "🔥 I'm running hot! Please give me some air!";
     if (batteryState == BatteryState.charging) {
       final target = ref.read(alertPercentageProvider);
-      if (batteryLevel >= target) return "🎉 Target reached! Unplug now to save battery life!";
-      return "⚡ Absorbing energy! Flowing fast & smooth!";
+      if (batteryLevel >= target) return l10n?.voltTargetReached ?? "🎉 Target reached! Unplug now to save battery life!";
+      return l10n?.voltCharging ?? "⚡ Absorbing energy! Flowing fast & smooth!";
     }
-    if (batteryLevel <= ref.read(lowAlertPercentageProvider)) return "🪫 My energy is running out... feed me power!";
-    return "✨ All systems operational!";
+    if (batteryLevel <= ref.read(lowAlertPercentageProvider)) return l10n?.voltLowBattery ?? "🪫 My energy is running out... feed me power!";
+    return l10n?.voltEnergized ?? "✨ All systems operational!";
   }
 
   Widget _buildHoloTelemetryCard({
@@ -1049,6 +1113,8 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
             ? Colors.orange
             : Colors.green;
 
+    final l10n = AppLocalizations.of(context) ?? AppLocalizationsEn();
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -1057,7 +1123,12 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
-            tooltip: 'Toggle Theme',
+            tooltip: l10n.language,
+            icon: const Icon(Icons.language_rounded),
+            onPressed: () => _showLanguageDialog(context),
+          ),
+          IconButton(
+            tooltip: l10n.theme,
             icon: Icon(
               Theme.of(context).brightness == Brightness.dark
                   ? Icons.light_mode_rounded
@@ -1068,7 +1139,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
             },
           ),
           IconButton(
-            tooltip: 'History',
+            tooltip: l10n.chargeHistory,
             icon: const Icon(Icons.show_chart),
             onPressed: () {
               Navigator.of(context).pushNamed('/history');
@@ -1077,12 +1148,15 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
           PopupMenuButton<String>(
             onSelected: (value) async {
               switch (value) {
+                case 'language':
+                  _showLanguageDialog(context);
+                  break;
                 case 'theme':
                   final current = ref.read(themeModeProvider);
                   showDialog(
                     context: context,
                     builder: (ctx) => SimpleDialog(
-                      title: const Text('Choose Theme'),
+                      title: Text(l10n.theme),
                       children: [
                         SimpleDialogOption(
                           onPressed: () {
@@ -1093,7 +1167,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                             children: [
                               const Icon(Icons.brightness_auto),
                               const SizedBox(width: 12),
-                              const Text('System Default'),
+                              Text(l10n.themeSystem),
                               if (current == ThemeMode.system) ...[
                                 const Spacer(),
                                 const Icon(Icons.check, color: Colors.blue),
@@ -1110,7 +1184,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                             children: [
                               const Icon(Icons.light_mode),
                               const SizedBox(width: 12),
-                              const Text('Light Theme'),
+                              Text(l10n.themeLight),
                               if (current == ThemeMode.light) ...[
                                 const Spacer(),
                                 const Icon(Icons.check, color: Colors.blue),
@@ -1127,7 +1201,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                             children: [
                               const Icon(Icons.dark_mode),
                               const SizedBox(width: 12),
-                              const Text('Dark Theme'),
+                              Text(l10n.themeDark),
                               if (current == ThemeMode.dark) ...[
                                 const Spacer(),
                                 const Icon(Icons.check, color: Colors.blue),
@@ -1165,16 +1239,17 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                   break;
               }
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'theme', child: Text('Theme: Light / Dark / Auto')),
-              PopupMenuItem(value: 'splash', child: Text('Replay Splash Screen')),
-              PopupMenuItem(value: 'onboarding', child: Text('Intro & Walkthrough')),
-              PopupMenuItem(value: 'history', child: Text('Charge History')),
-              PopupMenuItem(value: 'about', child: Text('About')),
-              PopupMenuItem(value: 'contribute', child: Text('Contribute')),
-              PopupMenuItem(value: 'privacy', child: Text('Privacy Policy')),
-              PopupMenuItem(value: 'faq', child: Text('FAQ')),
-              PopupMenuItem(value: 'share', child: Text('Share app')),
+            itemBuilder: (context) => [
+              PopupMenuItem(value: 'language', child: Text('${l10n.language}: 🌐')),
+              PopupMenuItem(value: 'theme', child: Text(l10n.theme)),
+              PopupMenuItem(value: 'splash', child: Text(l10n.replaySplashScreen)),
+              PopupMenuItem(value: 'onboarding', child: Text(l10n.introWalkthrough)),
+              PopupMenuItem(value: 'history', child: Text(l10n.chargeHistory)),
+              PopupMenuItem(value: 'about', child: Text(l10n.about)),
+              PopupMenuItem(value: 'contribute', child: Text(l10n.contribute)),
+              PopupMenuItem(value: 'privacy', child: Text(l10n.privacyPolicy)),
+              PopupMenuItem(value: 'faq', child: Text(l10n.faq)),
+              PopupMenuItem(value: 'share', child: Text(l10n.shareApp)),
             ],
           ),
         ],
@@ -1224,12 +1299,12 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      isTheftAlert ? 'THEFT ALARM ACTIVE!' : 'Alarm Ringing!',
+                                      isTheftAlert ? l10n.theftAlarmActive : l10n.alarmRinging,
                                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      isTheftAlert ? 'Charger disconnected! PIN required.' : 'Target reached or alert active',
+                                      isTheftAlert ? l10n.theftAlarmSubtitle : l10n.targetReachedSubtitle,
                                       style: const TextStyle(color: Colors.white70, fontSize: 12),
                                     ),
                                   ],
@@ -1243,7 +1318,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                                 ),
                                 onPressed: isTheftAlert ? _triggerTheftAlarm : _stopAlarm,
                                 child: Text(
-                                  isTheftAlert ? 'DISARM' : 'STOP',
+                                  isTheftAlert ? l10n.disarm : l10n.stop,
                                   style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ),
@@ -1265,7 +1340,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                       child: Center(
                         child: VoltCompanion(
                           mood: _getVoltMood(currentBattery, batteryState, ref.watch(guardianArmedProvider)),
-                          speechText: _getVoltSpeech(currentBattery, batteryState, ref.watch(guardianArmedProvider)),
+                          speechText: _getVoltSpeech(currentBattery, batteryState, ref.watch(guardianArmedProvider), l10n),
                           size: 110,
                           onTap: () {
                             HapticFeedback.lightImpact();
@@ -1328,10 +1403,10 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                                 const SizedBox(width: 4),
                                 Text(
                                   batteryState == BatteryState.charging
-                                      ? 'HYPER CHARGING'
+                                      ? l10n.hyperCharging
                                       : batteryState == BatteryState.full
-                                          ? 'BATTERY FULL'
-                                          : 'DISCHARGING',
+                                          ? l10n.batteryFullCaps
+                                          : l10n.dischargingCaps,
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
@@ -1345,9 +1420,9 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                             Text(
                               batteryState == BatteryState.charging
                                   ? (currentBattery < alertPercentage
-                                      ? '~${((alertPercentage - currentBattery) * 1.1).round().clamp(1, 180)}m to ${alertPercentage.round()}%'
-                                      : 'Target ${alertPercentage.round()}% Reached!')
-                                  : 'Target: ${alertPercentage.round()}%',
+                                      ? l10n.timeToTarget(((alertPercentage - currentBattery) * 1.1).round().clamp(1, 180), alertPercentage.round())
+                                      : l10n.targetReached(alertPercentage.round()))
+                                  : l10n.targetLabel(alertPercentage.round()),
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
@@ -1421,7 +1496,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                                     spacing: 6,
                                     children: [
                                       Text(
-                                        'Guardian Anti-Theft',
+                                        l10n.guardianTitle,
                                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                               fontWeight: FontWeight.bold,
                                               color: ref.watch(guardianArmedProvider) ? Colors.white : null,
@@ -1434,7 +1509,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
-                                          ref.watch(guardianArmedProvider) ? 'ARMED' : 'IDLE',
+                                          ref.watch(guardianArmedProvider) ? l10n.armedCaps : l10n.idleCaps,
                                           style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                                         ),
                                       ),
@@ -1443,8 +1518,8 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                                   const SizedBox(height: 2),
                                   Text(
                                     ref.watch(guardianArmedProvider)
-                                        ? 'Siren will blast & lock screen if unplugged'
-                                        : 'Sound alarm if someone unplugs phone',
+                                        ? l10n.guardianSirenWarning
+                                        : l10n.guardianUnplugWarning,
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: ref.watch(guardianArmedProvider)
@@ -1467,15 +1542,15 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                '🔒 Protected with 4-digit PIN',
-                                style: TextStyle(fontSize: 11, color: Colors.white60),
+                              Text(
+                                l10n.protectedWithPin,
+                                style: const TextStyle(fontSize: 11, color: Colors.white60),
                               ),
                               GestureDetector(
                                 onTap: _changePinDialog,
-                                child: const Text(
-                                  'Change PIN',
-                                  style: TextStyle(
+                                child: Text(
+                                  l10n.changePin,
+                                  style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF93C5FD),
@@ -1502,23 +1577,23 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                     children: [
                       _buildHoloTelemetryCard(
                         icon: Icons.thermostat,
-                        label: 'Temperature',
+                        label: l10n.temperature,
                         value: _batteryDetails.temperature > 0
                             ? '${_batteryDetails.temperature.toStringAsFixed(1)}°C'
                             : '--',
-                        subtitle: _batteryDetails.temperature > 40 ? 'Running Warm' : 'Nominal Temp',
+                        subtitle: _batteryDetails.temperature > 40 ? l10n.runningWarm : l10n.nominalTemp,
                         color: tempColor,
                       ),
                       _buildHoloTelemetryCard(
                         icon: Icons.favorite_border,
-                        label: 'Battery Health',
-                        value: _batteryDetails.health,
-                        subtitle: 'Operating Well',
+                        label: l10n.health,
+                        value: _batteryDetails.health == 'Good' ? l10n.healthGood : _batteryDetails.health,
+                        subtitle: l10n.operatingWell,
                         color: _batteryDetails.health == 'Good' ? Colors.green : Colors.orange,
                       ),
                       _buildHoloTelemetryCard(
                         icon: Icons.electric_bolt,
-                        label: 'Voltage',
+                        label: l10n.voltage,
                         value: _batteryDetails.voltage > 0
                             ? '${_batteryDetails.voltage.toStringAsFixed(2)} V'
                             : '--',
@@ -1527,9 +1602,15 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                       ),
                       _buildHoloTelemetryCard(
                         icon: Icons.power,
-                        label: 'Power Source',
-                        value: _batteryDetails.plugged,
-                        subtitle: batteryState == BatteryState.charging ? 'Active Input' : 'Disconnected',
+                        label: l10n.powerSource,
+                        value: _batteryDetails.plugged == 'AC'
+                            ? l10n.pluggedAc
+                            : _batteryDetails.plugged == 'USB'
+                                ? l10n.pluggedUsb
+                                : _batteryDetails.plugged == 'Wireless'
+                                    ? l10n.pluggedWireless
+                                    : l10n.pluggedNone,
+                        subtitle: batteryState == BatteryState.charging ? l10n.activeInput : l10n.disconnected,
                         color: Colors.cyan,
                       ),
                     ],
@@ -1537,7 +1618,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
 
                   const SizedBox(height: 32),
                   Text(
-                    "Alert me when battery reaches:",
+                    l10n.alertMeWhenReaches,
                     style: Theme.of(context).textTheme.titleLarge,
                     textAlign: TextAlign.center,
                   ),
@@ -1575,7 +1656,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                       children: [
                         SwitchListTile(
                           title: Text(
-                            "Enable Alarm Sound",
+                            l10n.enableAlarmSound,
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           value: ref.watch(alarmEnabledProvider),
@@ -1587,12 +1668,12 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                         ),
                         SwitchListTile(
                           title: Text(
-                            "Continuous Alarm",
+                            l10n.continuousAlarm,
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          subtitle: const Text(
-                            "Alarm will continue until you unplug or disable it",
-                            style: TextStyle(fontSize: 12),
+                          subtitle: Text(
+                            l10n.continuousAlarmDesc,
+                            style: const TextStyle(fontSize: 12),
                           ),
                           value: ref.watch(continuousAlarmProvider),
                           activeThumbColor: color,
@@ -1603,12 +1684,12 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                         const Divider(height: 1),
                         SwitchListTile(
                           title: Text(
-                            "Low Battery Alert",
+                            l10n.lowBatteryAlert,
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          subtitle: const Text(
-                            "Alert when battery goes below target while discharging",
-                            style: TextStyle(fontSize: 12),
+                          subtitle: Text(
+                            l10n.lowBatteryAlertDesc,
+                            style: const TextStyle(fontSize: 12),
                           ),
                           value: ref.watch(lowAlarmEnabledProvider),
                           activeThumbColor: color,
@@ -1622,7 +1703,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text("Low target"),
+                              Text(l10n.lowTarget),
                               Text("${ref.watch(lowAlertPercentageProvider).round()}%"),
                             ],
                           ),
@@ -1640,8 +1721,8 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                         const Divider(height: 1),
                         ListTile(
                           leading: const Icon(Icons.battery_saver),
-                          title: const Text("Allow background activity"),
-                          subtitle: const Text("Open app battery settings: set to Unrestricted / Allow"),
+                          title: Text(l10n.allowBackgroundActivity),
+                          subtitle: Text(l10n.allowBackgroundActivityDesc),
                           onTap: () async {
                             try {
                               await _platform.invokeMethod('openSettings', {'type': 'app_battery_settings'});
@@ -1650,8 +1731,8 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                         ),
                         ListTile(
                           leading: const Icon(Icons.start),
-                          title: const Text("Autostart / Startup"),
-                          subtitle: const Text("Open OEM autostart page to allow startup on boot"),
+                          title: Text(l10n.autostartStartup),
+                          subtitle: Text(l10n.autostartStartupDesc),
                           onTap: () async {
                             try {
                               await _platform.invokeMethod('openSettings', {'type': 'autostart_settings'});
@@ -1660,8 +1741,8 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                         ),
                         ListTile(
                           leading: const Icon(Icons.notifications_active),
-                          title: const Text("Notification settings"),
-                          subtitle: const Text("Ensure alerts are allowed with sound"),
+                          title: Text(l10n.notificationSettings),
+                          subtitle: Text(l10n.notificationSettingsDesc),
                           onTap: () async {
                             try {
                               await _platform.invokeMethod('openSettings', {'type': 'notification_settings'});
@@ -1688,7 +1769,7 @@ class _ChargeAlertScreenState extends ConsumerState<ChargeAlertScreen> {
                                 }
                               },
                               icon: Icon(_isAlarming ? Icons.stop : Icons.alarm),
-                              label: Text(_isAlarming ? "Stop alarm now" : "Test alarm now"),
+                              label: Text(_isAlarming ? l10n.stopAlarmNow : l10n.testAlarmNow),
                             ),
                           ),
                         ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/volt_companion.dart';
+import '../l10n/app_localizations.dart';
 
 // ─── Theme-adaptive color palette for onboarding ────────────────────────────
 
@@ -534,12 +535,13 @@ class _OnboardingPageState extends State<OnboardingPage>
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   Widget _buildSlide1MeetVolt(_OnboardTheme t) {
+    final l10n = AppLocalizations.of(context);
     final greetings = [
-      'Hey there! I\'m Volt ⚡',
-      'Tap me again! I\'m ticklish!',
-      'I\'ll guard your battery!',
-      'Let\'s explore together!',
-      'You\'re awesome! 🤩',
+      l10n?.voltGreetingCompanion ?? 'Hey there! I\'m Volt ⚡',
+      l10n?.voltAwake ?? 'Tap me again! I\'m ticklish!',
+      l10n?.voltStandingBy ?? 'I\'ll guard your battery!',
+      l10n?.voltAllHealthy ?? 'Let\'s explore together!',
+      l10n?.voltEnergized ?? 'You\'re awesome! 🤩',
     ];
     final greeting = greetings[_voltTapCount % greetings.length];
 
@@ -556,10 +558,10 @@ class _OnboardingPageState extends State<OnboardingPage>
           isDark: t.isDark,
         ),
       ),
-      title: 'Meet Volt',
-      subtitle: 'Your smart battery companion. Volt watches over your device and keeps you informed.',
+      title: l10n?.meetVolt ?? 'Meet Volt',
+      subtitle: l10n?.meetVoltDesc ?? 'Your smart battery companion. Volt watches over your device and keeps you informed.',
       interactive: Text(
-        '👆 Tap Volt to say hi!',
+        l10n?.tapVoltToSayHi ?? '👆 Tap Volt to say hi!',
         style: TextStyle(
           color: t.hintColor.withValues(alpha: 0.7),
           fontSize: 13,
@@ -1421,8 +1423,8 @@ class _CelebrationIllustrationState extends State<_CelebrationIllustration>
             VoltCompanion(
               mood: VoltMood.targetReached,
               speechText: _celebrationTapCount == 0
-                  ? "🎉 All systems ready! Tap POWER UP below!"
-                  : "🚀 Charging circuits primed! Let's go!",
+                  ? (AppLocalizations.of(context)?.voltTargetReached ?? "🎉 All systems ready! Tap POWER UP below!")
+                  : (AppLocalizations.of(context)?.voltFastFlow ?? "🚀 Charging circuits primed! Let's go!"),
               size: 165,
               onTap: () {
                 HapticFeedback.lightImpact();

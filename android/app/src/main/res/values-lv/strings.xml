@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ChargeAlert</string>
+    <string name="charging_alert">Uzlādes trauksme</string>
+    <string name="stop_alarm">Apturēt trauksmi</string>
+    <string name="action_stop">Apturēt</string>
+    <string name="notif_channel_name">Uzlādes brīdinājumi</string>
+    <string name="notif_channel_desc">Kanāls akumulatora līmeņa un uzlādes brīdinājumiem</string>
+    <string name="theft_alarm_title">🚨 ZĀDZĪBAS TRAUKSME IESLĒGTA!</string>
+    <string name="theft_alarm_body">Lādētājs tika atvienots! Pieskarieties, lai atslēgtu ar PIN.</string>
+    <string name="charging_alarm_body">Uzlādes trauksmes signāls skan! Pieskarieties, lai apturētu.</string>
+</resources>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 class GuardianDialogs {
   /// Show PIN setup or confirmation to toggle Guardian Mode
@@ -9,6 +10,7 @@ class GuardianDialogs {
   }) async {
     final pinController = TextEditingController();
     String? errorText;
+    final l10n = AppLocalizations.of(context);
 
     return showDialog<bool>(
       context: context,
@@ -25,9 +27,11 @@ class GuardianDialogs {
                   color: isArming ? const Color(0xFF38BDF8) : Colors.orange,
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  isArming ? 'Arm Guardian Mode' : 'Disarm Guardian Mode',
-                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                Expanded(
+                  child: Text(
+                    isArming ? (l10n?.armGuardian ?? 'Arm Guardian Mode') : (l10n?.disarmGuardian ?? 'Disarm Guardian Mode'),
+                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                  ),
                 ),
               ],
             ),
@@ -38,8 +42,8 @@ class GuardianDialogs {
                 children: [
                   Text(
                     isArming
-                        ? 'While armed, if anyone unplugs your charger, a loud siren will blast until your 4-digit PIN is entered.'
-                        : 'Enter your 4-digit PIN to disarm Anti-Theft Guardian Mode.',
+                        ? (l10n?.guardianDescription ?? 'While armed, if anyone unplugs your charger, a loud siren will blast until your 4-digit PIN is entered.')
+                        : (l10n?.guardianDisarmPrompt ?? 'Enter your 4-digit PIN to disarm Anti-Theft Guardian Mode.'),
                     style: const TextStyle(color: Colors.white70, fontSize: 13),
                   ),
                   const SizedBox(height: 16),
@@ -71,7 +75,7 @@ class GuardianDialogs {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+                child: Text(l10n?.cancel ?? 'Cancel', style: const TextStyle(color: Colors.white60)),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -84,11 +88,11 @@ class GuardianDialogs {
                     Navigator.of(ctx).pop(true);
                   } else {
                     setState(() {
-                      errorText = 'Incorrect PIN';
+                      errorText = l10n?.wrongPin ?? 'Incorrect PIN';
                     });
                   }
                 },
-                child: Text(isArming ? 'Arm Now' : 'Disarm'),
+                child: Text(isArming ? (l10n?.armGuardian ?? 'Arm Now') : (l10n?.disarm ?? 'Disarm')),
               ),
             ],
           );
@@ -105,6 +109,7 @@ class GuardianDialogs {
   }) async {
     final pinController = TextEditingController();
     String? errorText;
+    final l10n = AppLocalizations.of(context);
 
     await showDialog(
       context: context,
@@ -125,9 +130,9 @@ class GuardianDialogs {
                     children: [
                       const Icon(Icons.warning_amber_rounded, size: 64, color: Colors.white),
                       const SizedBox(height: 12),
-                      const Text(
-                        'THEFT ALARM TRIGGERED!',
-                        style: TextStyle(
+                      Text(
+                        l10n?.theftAlarmActive ?? 'THEFT ALARM TRIGGERED!',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.w900,
@@ -136,9 +141,9 @@ class GuardianDialogs {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Charger was disconnected without authorization!',
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                      Text(
+                        l10n?.theftAlarmSubtitle ?? 'Charger was disconnected without authorization!',
+                        style: const TextStyle(color: Colors.white70, fontSize: 13),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
@@ -177,14 +182,14 @@ class GuardianDialogs {
                               Navigator.of(ctx).pop();
                             } else {
                               setState(() {
-                                errorText = 'Incorrect PIN! Siren active.';
+                                errorText = l10n?.wrongPin ?? 'Incorrect PIN! Siren active.';
                               });
                             }
                           },
                           icon: const Icon(Icons.lock_open),
-                          label: const Text(
-                            'SILENCE & DISARM',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          label: Text(
+                            l10n?.disarm ?? 'SILENCE & DISARM',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                         ),
                       ),

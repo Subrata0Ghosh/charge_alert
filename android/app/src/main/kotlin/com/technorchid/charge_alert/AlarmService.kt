@@ -89,13 +89,13 @@ class AlarmService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
         )
 
+        val title = if (isTheft) getString(R.string.theft_alarm_title) else getString(R.string.app_name)
+        val body = if (isTheft) getString(R.string.theft_alarm_body) else getString(R.string.charging_alarm_body)
+
         val notifBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(if (isTheft) "🚨 THEFT ALARM TRIGGERED!" else "ChargeAlert")
-            .setContentText(
-                if (isTheft) "Charger was disconnected! Tap to disarm with PIN."
-                else "Charging alarm is ringing! Tap to stop."
-            )
+            .setContentTitle(title)
+            .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setFullScreenIntent(fullScreenPendingIntent, true)
@@ -113,7 +113,7 @@ class AlarmService : Service() {
                 stopIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
             )
-            notifBuilder.addAction(R.mipmap.ic_launcher, "Stop", stopPending)
+            notifBuilder.addAction(R.mipmap.ic_launcher, getString(R.string.action_stop), stopPending)
         }
 
         val notification: Notification = notifBuilder.build()

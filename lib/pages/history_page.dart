@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../l10n/app_localizations.dart';
 
 class ChargeHistoryPage extends StatefulWidget {
   const ChargeHistoryPage({super.key});
@@ -57,21 +58,22 @@ class _ChargeHistoryPageState extends State<ChargeHistoryPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Charge History'),
+        title: Text(l10n?.chargeHistory ?? 'Charge History'),
         actions: [
           IconButton(
             onPressed: _samples.isEmpty ? null : _clear,
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Clear',
+            tooltip: l10n?.clearHistory ?? 'Clear',
           )
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _samples.isEmpty
-              ? const Center(child: Text('No history yet'))
+              ? Center(child: Text(l10n?.noHistory ?? 'No history yet'))
               : Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(

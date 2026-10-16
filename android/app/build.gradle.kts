@@ -37,8 +37,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        // Package only English resources to reduce size. Add more if you localize.
-        resourceConfigurations += setOf("en")
+        // Package resources for all 12 supported languages
+        resourceConfigurations += setOf("en", "lv", "es", "de", "fr", "ru", "pt", "hi", "bn", "ar", "zh", "ja")
     }
 
     signingConfigs {

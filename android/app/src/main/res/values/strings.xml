@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ChargeAlert</string>
+    <string name="charging_alert">Charging Alert</string>
+    <string name="stop_alarm">Stop Alarm</string>
+    <string name="action_stop">Stop</string>
+    <string name="notif_channel_name">Charge Alerts</string>
+    <string name="notif_channel_desc">Channel for battery level and charging alerts</string>
+    <string name="theft_alarm_title">🚨 THEFT ALARM TRIGGERED!</string>
+    <string name="theft_alarm_body">Charger was disconnected! Tap to disarm with PIN.</string>
+    <string name="charging_alarm_body">Charging alarm is ringing! Tap to stop.</string>
+</resources>
