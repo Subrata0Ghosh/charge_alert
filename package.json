@@ -1,0 +1,32 @@
+{
+  "name": "charge_alert",
+  "version": "1.0.0",
+  "description": "<div align=\"center\">",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "render-video": "node render_cartoon_video.js",
+    "render-video:music": "node render_cartoon_video.js --music",
+    "render-video:1080p": "node render_cartoon_video.js --resolution 1080x1920 --music",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Subrata0Ghosh/charge_alert.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Subrata0Ghosh/charge_alert/issues"
+  },
+  "homepage": "https://github.com/Subrata0Ghosh/charge_alert#readme",
+  "dependencies": {
+    "puppeteer-core": "^25.13.0",
+    "puppeteer-screen-recorder": "^3.0.6"
+  }
+}

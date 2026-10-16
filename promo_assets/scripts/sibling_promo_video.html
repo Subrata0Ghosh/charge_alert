@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Charge Alert - Sweet Sibling Story Promo</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Bangers&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Outfit', sans-serif;
+    overflow: hidden;
+  }
+
+  #video-container {
+    position: relative;
+    width: 360px;
+    height: 640px;
+    overflow: hidden;
+    background: #0a0a0a;
+    border-radius: 16px;
+    box-shadow: 0 0 60px rgba(0, 255, 180, 0.15);
+  }
+
+  .scene {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    opacity: 0;
+    transition: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .scene.active {
+    opacity: 1;
+  }
+
+  .scene img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0; left: 0;
+  }
+
+  /* ───────── Scene Overlays ───────── */
+  .scene-overlay {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 22px 18px 24px 18px;
+    background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.6) 20%, rgba(0,0,0,0.92) 100%);
+    z-index: 10;
+  }
+
+  .scene-overlay h2 {
+    font-family: 'Bangers', cursive;
+    font-size: 26px;
+    color: #fff;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+    letter-spacing: 1.2px;
+    opacity: 0;
+    transform: translateY(25px);
+  }
+
+  .scene-overlay h2.animate-in {
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .scene-overlay p {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.9);
+    margin-top: 5px;
+    opacity: 0;
+    transform: translateY(18px);
+    line-height: 1.35;
+  }
+
+  .scene-overlay p.animate-in {
+    animation: slideUp 0.5s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* ───────── Ken Burns Effects ───────── */
+  .ken-burns {
+    animation: kenBurns 4.5s ease-in-out forwards;
+  }
+
+  @keyframes kenBurns {
+    0% { transform: scale(1) translateX(0); }
+    100% { transform: scale(1.12) translateX(-2%); }
+  }
+
+  .ken-burns-right {
+    animation: kenBurnsRight 4.5s ease-in-out forwards;
+  }
+
+  @keyframes kenBurnsRight {
+    0% { transform: scale(1.05) translateX(-2%); }
+    100% { transform: scale(1.14) translateX(2%); }
+  }
+
+  .zoom-in {
+    animation: zoomIn 4s ease-in-out forwards;
+  }
+
+  @keyframes zoomIn {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.18); }
+  }
+
+  .zoom-out {
+    animation: zoomOut 4s ease-in-out forwards;
+  }
+
+  @keyframes zoomOut {
+    0% { transform: scale(1.18); }
+    100% { transform: scale(1.02); }
+  }
+
+  /* ───────── Alarm & Shake Effects ───────── */
+  .alarm-flash {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 5;
+    pointer-events: none;
+    animation: alarmFlash 0.4s infinite;
+  }
+
+  @keyframes alarmFlash {
+    0%, 100% { background: rgba(255,0,0,0); }
+    50% { background: rgba(255, 30, 30, 0.22); }
+  }
+
+  .sound-waves {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 6;
+    pointer-events: none;
+  }
+
+  .sound-wave-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    border: 3px solid rgba(255, 70, 70, 0.7);
+    border-radius: 50%;
+    animation: expandRing 1.4s ease-out infinite;
+  }
+
+  .sound-wave-ring:nth-child(2) { animation-delay: 0.45s; }
+  .sound-wave-ring:nth-child(3) { animation-delay: 0.9s; }
+
+  @keyframes expandRing {
+    0% { width: 40px; height: 40px; opacity: 1; }
+    100% { width: 340px; height: 340px; opacity: 0; }
+  }
+
+  .shake {
+    animation: shake 0.25s infinite;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px) rotate(-0.6deg); }
+    75% { transform: translateX(5px) rotate(0.6deg); }
+  }
+
+  /* ───────── Caption Badge ───────── */
+  .caption-bar {
+    position: absolute;
+    top: 14px; left: 14px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    opacity: 0;
+  }
+
+  .caption-bar.animate-in {
+    animation: fadeIn 0.4s ease forwards;
+  }
+
+  .caption-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #00ffaa;
+    box-shadow: 0 0 10px #00ffaa;
+  }
+
+  .caption-dot.red {
+    background: #ff3c3c;
+    box-shadow: 0 0 10px #ff3c3c;
+    animation: blink 0.8s infinite;
+  }
+
+  .caption-bar span {
+    font-size: 11px;
+    color: #fff;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ───────── Comic Text Badges ───────── */
+  .comic-text {
+    position: absolute;
+    z-index: 20;
+    font-family: 'Bangers', cursive;
+    color: #fff;
+    font-size: 38px;
+    text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+    opacity: 0;
+    transform: scale(0) rotate(-8deg);
+    pointer-events: none;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  .comic-text.animate-in {
+    animation: comicPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  @keyframes comicPop {
+    to { opacity: 1; transform: scale(1) rotate(-3deg); }
+  }
+
+  .alert-text {
+    position: absolute;
+    top: 9%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    font-family: 'Bangers', cursive;
+    font-size: 36px;
+    color: #ff3c3c;
+    text-shadow: 0 0 25px rgba(255,60,60,0.9), 2px 2px 0 #000;
+    opacity: 0;
+    letter-spacing: 3px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .alert-text.animate-in {
+    animation: alertPulse 0.6s ease forwards, alertBlink 0.4s 0.6s infinite;
+  }
+
+  @keyframes alertPulse {
+    0% { opacity: 0; transform: translateX(-50%) scale(0.5); }
+    100% { opacity: 1; transform: translateX(-50%) scale(1); }
+  }
+
+  @keyframes alertBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* ───────── End Card ───────── */
+  #scene-endcard {
+    background: radial-gradient(circle at center, #13271d 0%, #0c1611 40%, #060907 100%);
+  }
+
+  .end-card-content {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .app-icon-wrapper {
+    width: 110px;
+    height: 110px;
+    border-radius: 26px;
+    overflow: hidden;
+    box-shadow: 0 0 45px rgba(0, 255, 170, 0.4), 0 10px 30px rgba(0,0,0,0.8);
+    border: 2px solid rgba(0, 255, 170, 0.4);
+    opacity: 0;
+    transform: scale(0.3);
+  }
+
+  .app-icon-wrapper.animate-in {
+    animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .app-icon-wrapper img {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    object-fit: cover;
+  }
+
+  .app-name {
+    font-family: 'Outfit', sans-serif;
+    font-size: 32px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 0.5px;
+    opacity: 0;
+    transform: translateY(15px);
+    background: linear-gradient(135deg, #ffffff 0%, #00ffaa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .app-name.animate-in {
+    animation: slideUp 0.5s 0.25s ease forwards;
+  }
+
+  .app-tagline {
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 500;
+    margin-top: -8px;
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  .app-tagline.animate-in {
+    animation: slideUp 0.5s 0.45s ease forwards;
+  }
+
+  .feature-pills {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin: 4px 0 10px 0;
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  .feature-pills.animate-in {
+    animation: slideUp 0.5s 0.65s ease forwards;
+  }
+
+  .pill {
+    padding: 5px 12px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(0,255,170,0.3);
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #00ffc4;
+    letter-spacing: 0.5px;
+  }
+
+  .playstore-badge {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    opacity: 0;
+    transform: translateY(15px);
+    cursor: pointer;
+  }
+
+  .playstore-badge.animate-in {
+    animation: slideUp 0.5s 0.85s ease forwards;
+  }
+
+  .playstore-badge img {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 185px;
+    height: auto;
+    display: block;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 16px rgba(0,0,0,0.6));
+  }
+
+  .glow-ring {
+    position: absolute;
+    width: 210px; height: 210px;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 255, 170, 0.15);
+    animation: pulseGlow 2.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { transform: scale(1); opacity: 0.35; }
+    50% { transform: scale(1.35); opacity: 0.08; }
+  }
+
+  /* ───────── Transitions & Keyframes ───────── */
+  @keyframes slideUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes popIn {
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .transition-wipe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #000;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .transition-wipe.active {
+    animation: wipeTransition 0.8s ease-in-out;
+  }
+
+  @keyframes wipeTransition {
+    0% { opacity: 0; }
+    40% { opacity: 1; }
+    60% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* ───────── Progress Bar ───────── */
+  .progress-bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #00ffaa, #00c3ff);
+    z-index: 100;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 10px rgba(0, 255, 170, 0.6);
+  }
+
+  /* ───────── Controls & Overlay ───────── */
+  .controls {
+    position: absolute;
+    top: 14px; right: 14px;
+    z-index: 100;
+    display: flex;
+    gap: 8px;
+  }
+
+  .control-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+
+  .control-btn:hover {
+    background: rgba(0,0,0,0.85);
+  }
+
+  #play-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 200;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+  }
+
+  #play-overlay .play-btn {
+    width: 82px; height: 82px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00ffaa, #00c3ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 45px rgba(0, 255, 170, 0.5);
+    animation: pulsePlay 2s ease-in-out infinite;
+  }
+
+  #play-overlay .play-btn svg {
+    width: 32px; height: 32px;
+    fill: #000;
+    margin-left: 4px;
+  }
+
+  #play-overlay p {
+    color: #fff;
+    font-size: 14px;
+    margin-top: 16px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  @keyframes pulsePlay {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(0,255,170,0.4); }
+    50% { transform: scale(1.08); box-shadow: 0 0 60px rgba(0,255,170,0.7); }
+  }
+
+  /* ───────── Video Export / Render Mode ───────── */
+  body.render-mode {
+    background: #000;
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+  }
+  body.render-mode #video-container {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  body.render-mode #controls,
+  body.render-mode #play-overlay {
+    display: none !important;
+  }
+</style>
+</head>
+<body>
+
+<div id="video-container">
+
+  <!-- Play Overlay -->
+  <div id="play-overlay" onclick="startVideo()">
+    <div class="play-btn">
+      <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+    </div>
+    <p>TAP TO PLAY STORY</p>
+  </div>
+
+  <!-- Scene 1: Sister studying peacefully -->
+  <div class="scene" id="scene-1">
+    <img id="img-1" src="" alt="Sister studying peacefully">
+    <div class="caption-bar" id="caption-1">
+      <div class="caption-dot"></div>
+      <span>Late Night Study 📖</span>
+    </div>
+    <div class="scene-overlay">
+      <h2 id="text-1a">Didi is studying hard...</h2>
+      <p id="text-1b">Her phone is safely plugged into the charger 🔌⚡</p>
+    </div>
+  </div>
+
+  <!-- Scene 2: Younger brother sneaking in -->
+  <div class="scene" id="scene-2">
+    <img id="img-2" src="" alt="Little brother sneaks into room">
+    <div class="caption-bar" id="caption-2">
+      <div class="caption-dot"></div>
+      <span>Sneaky Move 👀</span>
+    </div>
+    <div class="comic-text" id="comic-sneak" style="top: 14%; right: 12%; color: #ffd15c;">
+      HEHEHE...😈
+    </div>
+    <div class="scene-overlay">
+      <h2 id="text-2a">Little Bro spots the charger!</h2>
+      <p id="text-2b">His battery is 1%... Time to hijack the cable 🤫</p>
+    </div>
+  </div>
+
+  <!-- Scene 3: Unplugging cable swap -->
+  <div class="scene" id="scene-3">
+    <img id="img-3" src="" alt="Brother unplugs charger cable">
+    <div class="caption-bar" id="caption-3">
+      <div class="caption-dot red"></div>
+      <span>The Cable Swap 🔌</span>
+    </div>
+    <div class="scene-overlay">
+      <h2 id="text-3a">Quietly pulling the plug...</h2>
+      <p id="text-3b">He thinks she won't notice... But wait! 😱</p>
+    </div>
+  </div>
+
+  <!-- Scene 4: Alarm blast! -->
+  <div class="scene" id="scene-4">
+    <img id="img-4" src="" alt="Alarm blasts loudly">
+    <div class="alarm-flash" id="alarm-flash"></div>
+    <div class="sound-waves" id="sound-waves">
+      <div class="sound-wave-ring"></div>
+      <div class="sound-wave-ring"></div>
+      <div class="sound-wave-ring"></div>
+    </div>
+    <div class="alert-text" id="alert-text">🚨 CHARGER REMOVED! 🚨</div>
+    <div class="scene-overlay">
+      <h2 id="text-4a">LOUD ALARM TRIGGERED! 🔊</h2>
+      <p id="text-4b">Charge Alert screams at 100% volume! He's stunned!</p>
+    </div>
+  </div>
+
+  <!-- Scene 5: Caught red-handed, laughing -->
+  <div class="scene" id="scene-5">
+    <img id="img-5" src="" alt="Sister catches brother red-handed">
+    <div class="comic-text" id="comic-caught" style="top: 12%; left: 50%; transform: translateX(-50%); color: #ffeb3b;">
+      CAUGHT YA! 😂
+    </div>
+    <div class="scene-overlay">
+      <h2 id="text-5a">Busted Red-Handed! 😜</h2>
+      <p id="text-5b">Nobody unplugs Didi's phone without getting caught!</p>
+    </div>
+  </div>
+
+  <!-- Scene 6: Wholesome sweet sibling moment with app -->
+  <div class="scene" id="scene-6">
+    <img id="img-6" src="" alt="Siblings laughing together with Charge Alert">
+    <div class="caption-bar" id="caption-6">
+      <div class="caption-dot"></div>
+      <span>Peace Restored 🕊️</span>
+    </div>
+    <div class="comic-text" id="comic-sweet" style="top: 10%; right: 10%; color: #00ffc4;">
+      SWEET BOND ❤️
+    </div>
+  </div>
+
+  <!-- Scene 7: End Card -->
+  <div class="scene" id="scene-endcard">
+    <div class="glow-ring" style="top: 22%; left: 50%; transform: translateX(-50%);"></div>
+    <div class="end-card-content">
+      <div class="app-icon-wrapper" id="end-icon">
+        <img src="assets/icon/app_icon.png" alt="Charge Alert App Icon">
+      </div>
+      <div class="app-name" id="end-name">Charge Alert</div>
+      <div class="app-tagline" id="end-tagline">Anti-Theft & Battery Health Guardian</div>
+      
+      <div class="feature-pills" id="end-pills">
+        <span class="pill">⚡ Unplug Alarm</span>
+        <span class="pill">🔋 Full Charge Alert</span>
+        <span class="pill">🛡️ Theft Shield</span>
+      </div>
+
+      <div class="playstore-badge" id="end-badge">
+        <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play">
+      </div>
+    </div>
+  </div>
+
+  <!-- Transition wipe -->
+  <div class="transition-wipe" id="transition-wipe"></div>
+
+  <!-- Progress Bar -->
+  <div class="progress-bar" id="progress-bar"></div>
+
+  <!-- Controls -->
+  <div class="controls" id="controls" style="display: none;">
+    <button class="control-btn" id="btn-replay" title="Replay" onclick="replayVideo()">↺</button>
+    <button class="control-btn" id="btn-mute" title="Mute" onclick="toggleMute()">🔊</button>
+  </div>
+
+</div>
+
+<script>
+  let audioCtx;
+  let isMuted = false;
+
+  function initAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  }
+
+  function playTone(freq, duration, type = 'sine', volume = 0.15) {
+    if (!audioCtx || isMuted) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  }
+
+  function playStudySound() {
+    playTone(523.25, 0.4, 'sine', 0.12);
+    setTimeout(() => playTone(659.25, 0.4, 'sine', 0.12), 250);
+    setTimeout(() => playTone(783.99, 0.6, 'sine', 0.14), 500);
+  }
+
+  function playTiptoeSound() {
+    const notes = [220, 247, 262, 294, 330];
+    notes.forEach((freq, idx) => {
+      setTimeout(() => playTone(freq, 0.15, 'triangle', 0.12), idx * 400);
+    });
+  }
+
+  function playUnplugSound() {
+    playTone(450, 0.08, 'sawtooth', 0.16);
+    setTimeout(() => playTone(180, 0.18, 'sawtooth', 0.2), 80);
+  }
+
+  let alarmInterval = null;
+  function playAlarmSound() {
+    if (alarmInterval) clearInterval(alarmInterval);
+    let high = true;
+    alarmInterval = setInterval(() => {
+      if (isMuted) return;
+      playTone(high ? 940 : 700, 0.18, 'square', 0.22);
+      playTone(high ? 1175 : 880, 0.18, 'sawtooth', 0.10);
+      high = !high;
+    }, 220);
+  }
+
+  function stopAlarmSound() {
+    if (alarmInterval) {
+      clearInterval(alarmInterval);
+      alarmInterval = null;
+    }
+  }
+
+  function playCaughtSound() {
+    stopAlarmSound();
+    playTone(466.16, 0.3, 'triangle', 0.16);
+    setTimeout(() => playTone(440.00, 0.3, 'triangle', 0.16), 350);
+    setTimeout(() => playTone(415.30, 0.3, 'triangle', 0.16), 700);
+    setTimeout(() => playTone(392.00, 0.5, 'triangle', 0.18), 1050);
+  }
+
+  function playSweetSound() {
+    playTone(587.33, 0.4, 'sine', 0.15);
+    setTimeout(() => playTone(739.99, 0.4, 'sine', 0.16), 350);
+    setTimeout(() => playTone(880.00, 0.4, 'sine', 0.18), 700);
+    setTimeout(() => playTone(1174.66, 0.8, 'sine', 0.20), 1050);
+  }
+
+  function playEndCardChime() {
+    playTone(659.25, 0.25, 'sine', 0.18);
+    setTimeout(() => playTone(783.99, 0.25, 'sine', 0.18), 220);
+    setTimeout(() => playTone(1046.50, 0.35, 'sine', 0.22), 450);
+    setTimeout(() => playTone(1318.51, 0.8, 'sine', 0.24), 750);
+  }
+
+  const imagePaths = [
+    'sibling_frames/scene1.jpg',
+    'sibling_frames/scene2.jpg',
+    'sibling_frames/scene3.jpg',
+    'sibling_frames/scene4.jpg',
+    'sibling_frames/scene5.jpg',
+    'sibling_frames/scene6.jpg'
+  ];
+
+  const scenes = [
+    { id: 'scene-1', duration: 3800, imgAnim: 'ken-burns', sound: playStudySound },
+    { id: 'scene-2', duration: 3600, imgAnim: 'zoom-in', sound: playTiptoeSound },
+    { id: 'scene-3', duration: 3400, imgAnim: 'ken-burns-right', sound: playUnplugSound },
+    { id: 'scene-4', duration: 4400, imgAnim: 'shake', sound: playAlarmSound },
+    { id: 'scene-5', duration: 4000, imgAnim: 'zoom-out', sound: playCaughtSound },
+    { id: 'scene-6', duration: 4200, imgAnim: 'ken-burns', sound: playSweetSound },
+    { id: 'scene-endcard', duration: 5000, imgAnim: '', sound: playEndCardChime }
+  ];
+
+  const totalDuration = scenes.reduce((sum, s) => sum + s.duration, 0) + (scenes.length - 1) * 800;
+  let currentScene = -1;
+  let videoStartTime = 0;
+  let progressRAF;
+
+  function startVideo() {
+    window.videoEnded = false;
+    document.getElementById('play-overlay').style.display = 'none';
+    document.getElementById('controls').style.display = 'flex';
+    initAudio();
+    loadImages();
+    videoStartTime = Date.now();
+    playScene(0);
+    updateProgress();
+  }
+
+  function loadImages() {
+    for (let i = 0; i < 6; i++) {
+      const img = document.getElementById(`img-${i + 1}`);
+      if (img) {
+        img.src = imagePaths[i];
+      }
+    }
+  }
+
+  function playScene(index) {
+    if (index >= scenes.length) {
+      cancelAnimationFrame(progressRAF);
+      document.getElementById('progress-bar').style.width = '100%';
+      window.videoEnded = true;
+      window.dispatchEvent(new CustomEvent('video-ended'));
+      return;
+    }
+
+    const prev = currentScene;
+    currentScene = index;
+    const scene = scenes[index];
+
+    if (prev >= 0) {
+      const wipe = document.getElementById('transition-wipe');
+      wipe.classList.remove('active');
+      void wipe.offsetWidth;
+      wipe.classList.add('active');
+    }
+
+    const transDelay = prev >= 0 ? 400 : 0;
+
+    setTimeout(() => {
+      document.querySelectorAll('.scene').forEach(s => {
+        s.classList.remove('active');
+        const img = s.querySelector('img');
+        if (img) {
+          img.classList.remove('ken-burns', 'ken-burns-right', 'zoom-in', 'zoom-out', 'shake');
+        }
+      });
+
+      const sceneEl = document.getElementById(scene.id);
+      sceneEl.classList.add('active');
+
+      if (scene.imgAnim) {
+        const img = sceneEl.querySelector('img');
+        if (img) {
+          img.classList.add(scene.imgAnim);
+        }
+      }
+
+      if (scene.sound) scene.sound();
+
+      setTimeout(() => {
+        animateSceneText(index);
+      }, 300);
+
+      setTimeout(() => {
+        if (index === 3) stopAlarmSound();
+        playScene(index + 1);
+      }, scene.duration);
+
+    }, transDelay);
+  }
+
+  function animateSceneText(index) {
+    switch(index) {
+      case 0:
+        animate('caption-1');
+        animate('text-1a');
+        animate('text-1b');
+        break;
+      case 1:
+        animate('caption-2');
+        animate('comic-sneak');
+        animate('text-2a');
+        animate('text-2b');
+        break;
+      case 2:
+        animate('caption-3');
+        animate('text-3a');
+        animate('text-3b');
+        break;
+      case 3:
+        animate('alert-text');
+        animate('text-4a');
+        animate('text-4b');
+        break;
+      case 4:
+        animate('comic-caught');
+        animate('text-5a');
+        animate('text-5b');
+        break;
+      case 5:
+        animate('caption-6');
+        animate('comic-sweet');
+        break;
+      case 6:
+        animate('end-icon');
+        animate('end-name');
+        animate('end-tagline');
+        animate('end-pills');
+        animate('end-badge');
+        break;
+    }
+  }
+
+  function animate(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('animate-in');
+      void el.offsetWidth;
+      el.classList.add('animate-in');
+    }
+  }
+
+  function updateProgress() {
+    const elapsed = Date.now() - videoStartTime;
+    const pct = Math.min(100, (elapsed / totalDuration) * 100);
+    document.getElementById('progress-bar').style.width = pct + '%';
+    if (pct < 100) {
+      progressRAF = requestAnimationFrame(updateProgress);
+    }
+  }
+
+  function replayVideo() {
+    stopAlarmSound();
+    cancelAnimationFrame(progressRAF);
+    document.getElementById('progress-bar').style.width = '0%';
+    currentScene = -1;
+
+    document.querySelectorAll('.animate-in').forEach(el => el.classList.remove('animate-in'));
+    document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.scene img').forEach(img => {
+      img.classList.remove('ken-burns', 'ken-burns-right', 'zoom-in', 'zoom-out', 'shake');
+    });
+
+    videoStartTime = Date.now();
+    playScene(0);
+    updateProgress();
+  }
+
+  function toggleMute() {
+    isMuted = !isMuted;
+    document.getElementById('btn-mute').textContent = isMuted ? '🔇' : '🔊';
+    if (isMuted) stopAlarmSound();
+  }
+</script>
+
+</body>
+</html>

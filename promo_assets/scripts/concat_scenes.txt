@@ -1,0 +1,7 @@
+file 'scene1_declare.mp4'
+file 'scene2_assess.mp4'
+file 'scene3_isolate.mp4'
+file 'scene4_process.mp4'
+file 'scene5_build.mp4'
+file 'scene6_reveal.mp4'
+file 'scene7_outro.mp4'
